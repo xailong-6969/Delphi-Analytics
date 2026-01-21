@@ -1,0 +1,22 @@
+{
+  "name": "@delphi-dashboard/indexer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.18.0",
+    "dotenv": "^16",
+    "viem": "^2"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "tsx": "^4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
