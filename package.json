@@ -1,19 +1,23 @@
 {
-  "name": "@delphi-dashboard/web",
+  "name": "delphi-analytics-web",
+  "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "next dev --port 3000",
+    "build": "npx prisma generate --schema ../../packages/db/prisma/schema.prisma && next build",
+    "start": "next start --port 3000"
   },
   "dependencies": {
     "@prisma/client": "^5.18.0",
-    "next": "^14",
-    "react": "^18",
-    "react-dom": "^18"
+    "next": "16.0.10",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "viem": "^2.41.2"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.9.0"
   }
 }
-
