@@ -5,12 +5,21 @@
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
-    "start": "next start --port 3000"
+    "start": "next start --port 3000",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@prisma/client": "^5.18.0",
     "next": "16.0.10",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "viem": "^2.41.2"
+  },
+  "devDependencies": {
+    "prisma": "^5.18.0"
+  },
+  "prisma": {
+    "schema": "../../packages/db/prisma/schema.prisma"
   },
   "engines": {
     "node": ">=20.9.0"
