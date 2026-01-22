@@ -30,9 +30,10 @@ type Position = {
 
 export async function GET(
   _req: Request,
-  { params }: { params: { address: string } }
+  { params }: { params: Promise<{ address: string }> }
 ) {
-  const raw = params.address?.trim();
+  const { address: rawAddress } = await params;
+  const raw = rawAddress?.trim();
   if (!raw || !isHexAddress(raw)) {
     return NextResponse.json({ error: "Invalid address" }, { status: 400 });
   }
