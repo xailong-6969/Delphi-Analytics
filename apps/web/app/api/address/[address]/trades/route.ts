@@ -7,8 +7,8 @@ function isHexAddress(a: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(a);
 }
 
-export async function GET(req: Request, { params }: { params: { address: string } }) {
-  const address = params.address;
+export async function GET(req: Request, { params }: { params: Promise<{ address: string }> }) {
+  const { address } = await params;
   if (!isHexAddress(address)) {
     return NextResponse.json({ error: "Invalid address" }, { status: 400 });
   }
