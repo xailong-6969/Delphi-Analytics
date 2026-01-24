@@ -1,33 +1,33 @@
 import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
-import { createPublicClient, http, getAddress } from "viem";
-import delphiAbi from "@/lib/delphi.abi.json";
+import prisma from "@/lib/prisma";
+import { getAddress } from "viem";
 
-// REQUIRED for Railway Build
 export const dynamic = "force-dynamic";
 
-const prisma = new PrismaClient();
-
-const RPC_URL = process.env.RPC_URL!;
-const DELPHI_IMPL = (process.env.DELPHI_IMPL ?? "0xCaC4F41Df8188034Eb459Bb4c8FaEcd6EE369fdf") as `0x${string}`;
-
-if (!RPC_URL) throw new Error("Missing RPC_URL");
-
-const client = createPublicClient({ transport: http(RPC_URL) });
-
-function isHexAddress(a: string) {
+function isHexAddress(a: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(a);
 }
 
-type Position = {
+interface TradeData {
+  marketId: bigint;
+  modelIdx: bigint;
+  isBuy: boolean;
+  tokensDelta: string;
+  sharesDelta: string;
+}
+
+interface Position {
   marketId: bigint;
   modelIdx: bigint;
   sharesHeld: bigint;
   costBasis: bigint;
   realizedPnl: bigint;
-};
+}
 
-export async function GET(_req: Request, { params }: { params: Promise<{ address: string }> }) {
+export async function GET(
+  _req: Request, 
+  { params }: { params: Promise<{ address: string }> }
+) {
   const { address: rawAddress } = await params;
   const raw = rawAddress?.trim();
   
@@ -40,15 +40,28 @@ export async function GET(_req: Request, { params }: { params: Promise<{ address
   const trades = await prisma.trade.findMany({
     where: { trader: address },
     orderBy: { blockTime: "asc" },
+    select: {
+      marketId: true,
+      modelIdx: true,
+      isBuy: true,
+      tokensDelta: true,
+      sharesDelta: true,
+    },
   });
 
   const positions = new Map<string, Position>();
 
-  for (const t of trades) {
+  for (const t of trades as TradeData[]) {
     const key = `${t.marketId}:${t.modelIdx}`;
     let p = positions.get(key);
     if (!p) {
-      p = { marketId: BigInt(t.marketId), modelIdx: BigInt(t.modelIdx), sharesHeld: 0n, costBasis: 0n, realizedPnl: 0n };
+      p = { 
+        marketId: BigInt(t.marketId.toString()), 
+        modelIdx: BigInt(t.modelIdx.toString()), 
+        sharesHeld: 0n, 
+        costBasis: 0n, 
+        realizedPnl: 0n 
+      };
       positions.set(key, p);
     }
 
@@ -71,7 +84,42 @@ export async function GET(_req: Request, { params }: { params: Promise<{ address
     }
   }
 
-  const openPositions = [...positions.values()].filter((p) => p.sharesHeld > 0n);
-  // ... rest of your PnL logic (quoting/estimation) remains the same
-  return NextResponse.json({ address, totals: { /* ... */ } });
+  let totalRealizedPnl = 0n;
+  let totalCostBasis = 0n;
+  let openPositionsCount = 0;
+
+  const openPositions: Array<{
+    marketId: string;
+    modelIdx: string;
+    sharesHeld: string;
+    costBasis: string;
+    realizedPnl: string;
+  }> = [];
+
+  for (const p of positions.values()) {
+    totalRealizedPnl += p.realizedPnl;
+    if (p.sharesHeld > 0n) {
+      openPositionsCount++;
+      totalCostBasis += p.costBasis;
+      openPositions.push({
+        marketId: p.marketId.toString(),
+        modelIdx: p.modelIdx.toString(),
+        sharesHeld: p.sharesHeld.toString(),
+        costBasis: p.costBasis.toString(),
+        realizedPnl: p.realizedPnl.toString(),
+      });
+    }
+  }
+
+  return NextResponse.json({ 
+    address, 
+    totals: {
+      realizedPnl: totalRealizedPnl.toString(),
+      totalPnl: totalRealizedPnl.toString(),
+      unrealizedPnl: "0",
+      costBasis: totalCostBasis.toString(),
+      openPositionsCount,
+    },
+    openPositions,
+  });
 }
