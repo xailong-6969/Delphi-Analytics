@@ -1,67 +1,150 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../apps/web/node_modules/.prisma/client"
 }
 
+// ============================================
+// MARKETS
+// ============================================
 model Market {
   marketId        BigInt    @id
   configUri       String?
   configUriHash   String?
   createdAtBlock  BigInt?
   createdAtTime   DateTime?
-  modelsJson      Json?
+  
+  // Metadata from configUri
+  title           String?
+  description     String?
+  category        String?
+  endTime         DateTime?
+  
+  // Models in this market (JSON array)
+  modelsJson      Json?     // [{ idx, familyName, modelName, commitHash, color }]
+  
+  // Settlement
   winningModelIdx BigInt?
-  status          Int       @default(0)
+  status          Int       @default(0) // 0=active, 1=paused, 2=settled
+  settledAt       DateTime?
+  
+  // Aggregated stats (updated by indexer)
+  totalVolume     String    @default("0")
+  totalTrades     Int       @default(0)
+  
   trades          Trade[]
+  priceSnapshots  PriceSnapshot[]
 
   @@index([status])
   @@index([createdAtTime])
+  @@index([endTime])
 }
 
+// ============================================
+// TRADES
+// ============================================
 model Trade {
-  id              String   @id
+  id              String   @id // `${txHash}:${logIndex}`
   txHash          String
   logIndex        Int
   blockNumber     BigInt
   blockTime       DateTime
+  
   marketId        BigInt
   modelIdx        BigInt
-  trader          String
+  trader          String   // checksummed address
   isBuy           Boolean
+  
+  // All stored as strings to handle uint256
   tokensDelta     String
   sharesDelta     String
-  modelNewPrice   String
+  modelNewPrice   String   // UD60x18 format (1e18 = 100%)
   modelNewSupply  String
   marketNewSupply String
+  
+  // Computed fields
+  impliedProbability Float? // modelNewPrice as percentage
+  
   market          Market   @relation(fields: [marketId], references: [marketId])
 
   @@index([marketId, blockTime])
   @@index([trader, blockTime])
+  @@index([trader, marketId])
   @@index([txHash])
   @@index([blockTime])
-  @@index([isBuy, blockTime])
+  @@index([modelIdx, blockTime])
 }
 
+// ============================================
+// PRICE HISTORY (for charts)
+// ============================================
+model PriceSnapshot {
+  id              String   @id @default(cuid())
+  marketId        BigInt
+  modelIdx        BigInt
+  price           String   // UD60x18
+  probability     Float    // 0-100
+  timestamp       DateTime
+  blockNumber     BigInt
+  
+  market          Market   @relation(fields: [marketId], references: [marketId])
+
+  @@index([marketId, modelIdx, timestamp])
+  @@index([timestamp])
+}
+
+// ============================================
+// TRADER STATS (aggregated for leaderboard)
+// ============================================
+model TraderStats {
+  address         String   @id
+  totalTrades     Int      @default(0)
+  totalVolume     String   @default("0")
+  buyCount        Int      @default(0)
+  sellCount       Int      @default(0)
+  
+  // P&L tracking
+  realizedPnl     String   @default("0")
+  totalCostBasis  String   @default("0")
+  
+  // Timestamps
+  firstTradeAt    DateTime?
+  lastTradeAt     DateTime?
+  updatedAt       DateTime @updatedAt
+
+  @@index([totalVolume])
+  @@index([realizedPnl])
+  @@index([totalTrades])
+}
+
+// ============================================
+// INDEXER STATE
+// ============================================
 model IndexerState {
-  id        String   @id @default("delphi")
-  lastBlock BigInt
-  updatedAt DateTime @updatedAt
+  id              String   @id @default("delphi")
+  lastBlock       BigInt
+  lastBlockTime   DateTime?
+  isRunning       Boolean  @default(false)
+  lastError       String?
+  updatedAt       DateTime @updatedAt
 }
 
+// ============================================
+// DAILY STATS (for analytics)
+// ============================================
 model DailyStats {
-  id            String   @id
+  id            String   @id // YYYY-MM-DD
   date          DateTime @unique
   totalTrades   Int      @default(0)
   totalVolume   String   @default("0")
   uniqueTraders Int      @default(0)
   buyCount      Int      @default(0)
   sellCount     Int      @default(0)
+  newMarkets    Int      @default(0)
 
   @@index([date])
 }

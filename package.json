@@ -1,12 +1,16 @@
 {
-  "name": "delphi-analytics-web",
-  "version": "0.1.0",
+  "name": "delphi-analytics",
+  "version": "2.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 3000",
-    "build": "npx prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start --port 3000",
-    "postinstall": "npx prisma generate"
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate deploy",
+    "indexer": "tsx lib/indexer/run.ts",
+    "indexer:backfill": "tsx lib/indexer/backfill.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -17,7 +21,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.15.0",
-    "swr": "^2.2.5",
     "tailwind-merge": "^2.6.0",
     "viem": "^2.21.0"
   },
@@ -29,6 +32,7 @@
     "postcss": "^8.4.49",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.0",
     "typescript": "^5.6.0"
   },
   "engines": {
