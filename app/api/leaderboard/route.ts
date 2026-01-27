@@ -1,134 +1,164 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { VALID_MARKET_IDS_BIGINT, MARKET_WINNERS } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const sortBy = url.searchParams.get("sort") || "volume"; // volume, pnl, trades
-  const take = Math.min(Number(url.searchParams.get("take") || 50), 100);
-  const skip = Number(url.searchParams.get("skip") || 0);
-
+export async function GET(request: NextRequest) {
   try {
-    // Get all traders with precomputed stats
-    let orderBy: any = { totalVolume: "desc" };
-    if (sortBy === "pnl") orderBy = { realizedPnl: "desc" };
-    else if (sortBy === "trades") orderBy = { totalTrades: "desc" };
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50")));
+    const sortBy = searchParams.get("sortBy") || "pnl";
+    const search = searchParams.get("search")?.toLowerCase();
 
-    const [traders, total] = await Promise.all([
-      prisma.traderStats.findMany({
-        orderBy,
-        take,
-        skip,
-      }),
-      prisma.traderStats.count(),
-    ]);
+    // Get ALL trades for valid markets
+    const allTrades = await prisma.trade.findMany({
+      where: { marketId: { in: VALID_MARKET_IDS_BIGINT } },
+      select: {
+        trader: true,
+        marketId: true,
+        modelIdx: true,
+        isBuy: true,
+        tokensDelta: true,
+        sharesDelta: true,
+      },
+    });
 
-    // If no precomputed stats, calculate on the fly (slower but works)
-    if (traders.length === 0) {
-      const allTrades = await prisma.trade.findMany({
-        select: {
-          trader: true,
-          isBuy: true,
-          tokensDelta: true,
-          sharesDelta: true,
-          marketId: true,
-          modelIdx: true,
-        },
-        orderBy: { blockTime: "asc" },
-      });
+    // Calculate stats per trader
+    const traderStats = new Map<string, {
+      address: string;
+      realizedPnl: bigint;
+      totalVolume: bigint;
+      totalTrades: number;
+      positions: Map<string, { shares: bigint; cost: bigint }>;
+    }>();
 
-      // Aggregate per trader
-      const traderMap = new Map<string, {
-        trades: number;
-        volume: bigint;
-        buys: number;
-        sells: number;
-        positions: Map<string, { shares: bigint; cost: bigint }>;
-        realizedPnl: bigint;
-      }>();
-
-      for (const trade of allTrades) {
-        let t = traderMap.get(trade.trader);
-        if (!t) {
-          t = { trades: 0, volume: 0n, buys: 0, sells: 0, positions: new Map(), realizedPnl: 0n };
-          traderMap.set(trade.trader, t);
-        }
-
-        const tokens = BigInt(trade.tokensDelta);
-        const shares = BigInt(trade.sharesDelta);
-        t.trades++;
-        t.volume += tokens;
-
-        const posKey = `${trade.marketId}:${trade.modelIdx}`;
-        let pos = t.positions.get(posKey) || { shares: 0n, cost: 0n };
-
-        if (trade.isBuy) {
-          t.buys++;
-          pos.shares += shares;
-          pos.cost += tokens;
-        } else {
-          t.sells++;
-          if (pos.shares > 0n) {
-            const avgCost = pos.cost / pos.shares;
-            const costRemoved = avgCost * shares;
-            t.realizedPnl += tokens - costRemoved;
-            pos.shares -= shares;
-            pos.cost = pos.cost > costRemoved ? pos.cost - costRemoved : 0n;
-          } else {
-            t.realizedPnl += tokens;
-          }
-        }
-        t.positions.set(posKey, pos);
+    for (const trade of allTrades) {
+      const address = trade.trader.toLowerCase();
+      let stats = traderStats.get(address);
+      
+      if (!stats) {
+        stats = {
+          address: trade.trader,
+          realizedPnl: 0n,
+          totalVolume: 0n,
+          totalTrades: 0,
+          positions: new Map(),
+        };
+        traderStats.set(address, stats);
       }
 
-      // Sort and format
-      const sorted = Array.from(traderMap.entries())
-        .map(([address, stats]) => ({
-          address,
-          totalTrades: stats.trades,
-          totalVolume: stats.volume.toString(),
-          buyCount: stats.buys,
-          sellCount: stats.sells,
-          realizedPnl: stats.realizedPnl.toString(),
-        }))
-        .sort((a, b) => {
-          if (sortBy === "pnl") {
-            return BigInt(b.realizedPnl) > BigInt(a.realizedPnl) ? 1 : -1;
-          } else if (sortBy === "trades") {
-            return b.totalTrades - a.totalTrades;
-          }
-          return BigInt(b.totalVolume) > BigInt(a.totalVolume) ? 1 : -1;
-        })
-        .slice(skip, skip + take);
+      const tokens = BigInt(trade.tokensDelta);
+      const shares = BigInt(trade.sharesDelta);
+      const absTokens = tokens < 0n ? -tokens : tokens;
+      const absShares = shares < 0n ? -shares : shares;
+      
+      stats.totalVolume += absTokens;
+      stats.totalTrades += 1;
 
+      const posKey = `${trade.marketId}:${trade.modelIdx}`;
+      let pos = stats.positions.get(posKey) || { shares: 0n, cost: 0n };
+
+      if (trade.isBuy) {
+        pos.shares += absShares;
+        pos.cost += absTokens;
+      } else {
+        if (pos.shares > 0n) {
+          const avgCost = (pos.cost * BigInt(1e18)) / pos.shares;
+          const costBasis = (avgCost * absShares) / BigInt(1e18);
+          const pnl = absTokens - costBasis;
+          stats.realizedPnl += pnl;
+          
+          pos.shares -= absShares;
+          pos.cost -= costBasis;
+          if (pos.shares < 0n) pos.shares = 0n;
+          if (pos.cost < 0n) pos.cost = 0n;
+        } else {
+          stats.realizedPnl += absTokens;
+        }
+      }
+
+      stats.positions.set(posKey, pos);
+    }
+
+    // Add settlement P&L
+    for (const [, stats] of traderStats) {
+      for (const [posKey, pos] of stats.positions) {
+        if (pos.shares > 0n) {
+          const [marketId, modelIdx] = posKey.split(":");
+          const winnerIdx = MARKET_WINNERS[marketId];
+          
+          if (winnerIdx !== undefined) {
+            if (Number(modelIdx) === winnerIdx) {
+              stats.realizedPnl += pos.shares - pos.cost;
+            } else {
+              stats.realizedPnl -= pos.cost;
+            }
+          }
+        }
+      }
+    }
+
+    // Convert to array
+    let traders = Array.from(traderStats.values()).map(t => ({
+      address: t.address,
+      realizedPnl: t.realizedPnl.toString(),
+      totalVolume: t.totalVolume.toString(),
+      totalTrades: t.totalTrades,
+    }));
+
+    // Sort ALL traders
+    traders.sort((a, b) => {
+      if (sortBy === "volume") {
+        return Number(BigInt(b.totalVolume) - BigInt(a.totalVolume));
+      } else if (sortBy === "trades") {
+        return b.totalTrades - a.totalTrades;
+      }
+      return Number(BigInt(b.realizedPnl) - BigInt(a.realizedPnl));
+    });
+
+    // Assign ranks
+    const tradersWithRank = traders.map((t, idx) => ({
+      ...t,
+      rank: idx + 1,
+    }));
+
+    const totalTraders = tradersWithRank.length;
+
+    // Handle search
+    if (search) {
+      const found = tradersWithRank.filter(t => 
+        t.address.toLowerCase().includes(search)
+      );
       return NextResponse.json({
-        traders: sorted,
-        total: traderMap.size,
-        take,
-        skip,
-        sortBy,
+        leaderboard: found,
+        totalTraders,
+        totalPages: 1,
+        currentPage: 1,
       });
     }
 
+    // Paginate
+    const totalPages = Math.ceil(totalTraders / limit);
+    const offset = (page - 1) * limit;
+    const paginated = tradersWithRank.slice(offset, offset + limit);
+
     return NextResponse.json({
-      traders: traders.map((t) => ({
-        address: t.address,
-        totalTrades: t.totalTrades,
-        totalVolume: t.totalVolume,
-        buyCount: t.buyCount,
-        sellCount: t.sellCount,
-        realizedPnl: t.realizedPnl,
-        firstTradeAt: t.firstTradeAt,
-        lastTradeAt: t.lastTradeAt,
-      })),
-      total,
-      take,
-      skip,
-      sortBy,
+      leaderboard: paginated,
+      totalTraders,
+      totalPages,
+      currentPage: page,
     });
-  } catch (e) {
-    console.error("Leaderboard API error:", e);
-    return NextResponse.json({ error: "Failed to fetch leaderboard" }, { status: 500 });
+  } catch (error) {
+    console.error("Leaderboard error:", error);
+    return NextResponse.json({
+      leaderboard: [],
+      totalTraders: 0,
+      totalPages: 0,
+      currentPage: 1,
+      error: "Failed to fetch leaderboard",
+    });
   }
 }
