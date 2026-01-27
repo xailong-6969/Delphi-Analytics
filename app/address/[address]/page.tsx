@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+  Area,
+  AreaChart,
+} from "recharts";
 import { formatTokens, formatAddress, formatTimeAgo, formatDate } from "@/lib/utils";
 import { LINKS } from "@/lib/constants";
+import { MARKETS } from "@/lib/markets-config";
 import StatCard from "@/components/ui/StatCard";
 
 interface AddressStats {
@@ -37,30 +48,70 @@ interface Trade {
   impliedProbability: number;
 }
 
+interface PnlDataPoint {
+  time: string;
+  displayTime: string;
+  pnl: number;
+  cumulativePnl: number;
+  volume: number;
+}
+
+interface RankData {
+  rank: number;
+  totalTraders: number;
+}
+
 export default function AddressPage() {
   const { address } = useParams();
   const [stats, setStats] = useState<AddressStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [allTrades, setAllTrades] = useState<Trade[]>([]);
+  const [rankData, setRankData] = useState<RankData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [statsRes, tradesRes] = await Promise.all([
+        // Fetch stats and trades
+        const [statsRes, tradesRes, allTradesRes] = await Promise.all([
           fetch(`/api/address/${address}/stats`),
           fetch(`/api/address/${address}/trades?take=50`),
+          fetch(`/api/address/${address}/trades?take=500`),
         ]);
 
-        if (!statsRes.ok) throw new Error("Invalid address");
+        if (!statsRes.ok) throw new Error("Invalid address or no trades found");
 
-        const [statsData, tradesData] = await Promise.all([
+        const [statsData, tradesData, allTradesData] = await Promise.all([
           statsRes.json(),
           tradesRes.json(),
+          allTradesRes.json(),
         ]);
 
         setStats(statsData);
         setTrades(tradesData.trades || []);
+        setAllTrades(allTradesData.trades || []);
+
+        // Fetch rank separately (don't fail if it errors)
+        try {
+          const rankRes = await fetch(`/api/leaderboard?search=${address}`);
+          if (rankRes.ok) {
+            const rankJson = await rankRes.json();
+            if (rankJson.leaderboard && rankJson.leaderboard.length > 0) {
+              const trader = rankJson.leaderboard.find(
+                (t: any) => t.address.toLowerCase() === (address as string).toLowerCase()
+              );
+              if (trader) {
+                setRankData({
+                  rank: trader.rank,
+                  totalTraders: rankJson.totalTraders || 0,
+                });
+              }
+            }
+          }
+        } catch (e) {
+          console.log("Could not fetch rank:", e);
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
@@ -69,6 +120,76 @@ export default function AddressPage() {
     }
     if (address) fetchData();
   }, [address]);
+
+  // Calculate P&L over time for chart
+  const pnlChartData = useMemo(() => {
+    if (!allTrades || allTrades.length === 0) return [];
+
+    const sortedTrades = [...allTrades].sort(
+      (a, b) => new Date(a.blockTime).getTime() - new Date(b.blockTime).getTime()
+    );
+
+    const positions = new Map<string, { shares: number; cost: number }>();
+    let cumulativePnl = 0;
+    const dataPoints: PnlDataPoint[] = [];
+
+    for (const trade of sortedTrades) {
+      const tokens = Math.abs(parseFloat(trade.tokensDelta)) / 1e18;
+      const shares = Math.abs(parseFloat(trade.sharesDelta)) / 1e18;
+      const posKey = `${trade.marketId}:${trade.modelIdx}`;
+
+      let tradePnl = 0;
+
+      if (trade.isBuy) {
+        const pos = positions.get(posKey) || { shares: 0, cost: 0 };
+        pos.shares += shares;
+        pos.cost += tokens;
+        positions.set(posKey, pos);
+      } else {
+        const pos = positions.get(posKey);
+        if (pos && pos.shares > 0) {
+          const avgCost = pos.cost / pos.shares;
+          const costBasis = avgCost * shares;
+          tradePnl = tokens - costBasis;
+          pos.shares -= shares;
+          pos.cost -= costBasis;
+          if (pos.shares < 0) pos.shares = 0;
+          if (pos.cost < 0) pos.cost = 0;
+          positions.set(posKey, pos);
+        } else {
+          tradePnl = tokens;
+        }
+      }
+
+      cumulativePnl += tradePnl;
+
+      dataPoints.push({
+        time: trade.blockTime,
+        displayTime: new Date(trade.blockTime).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        pnl: tradePnl,
+        cumulativePnl: cumulativePnl,
+        volume: tokens,
+      });
+    }
+
+    const dailyData = new Map<string, PnlDataPoint>();
+    for (const point of dataPoints) {
+      const day = point.displayTime;
+      if (dailyData.has(day)) {
+        const existing = dailyData.get(day)!;
+        existing.pnl += point.pnl;
+        existing.volume += point.volume;
+        existing.cumulativePnl = point.cumulativePnl;
+      } else {
+        dailyData.set(day, { ...point });
+      }
+    }
+
+    return Array.from(dailyData.values());
+  }, [allTrades]);
 
   if (loading) {
     return (
@@ -110,6 +231,11 @@ export default function AddressPage() {
           <h1 className="text-xl sm:text-2xl font-bold text-white font-mono break-all">
             {stats.address}
           </h1>
+          {rankData && (
+            <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
+              🏆 #{rankData.rank.toLocaleString()} of {rankData.totalTraders.toLocaleString()}
+            </span>
+          )}
           <a
             href={LINKS.address(stats.address)}
             target="_blank"
@@ -152,6 +278,61 @@ export default function AddressPage() {
         />
       </div>
 
+      {/* P&L Chart */}
+      {pnlChartData.length > 1 && (
+        <div className="card p-5 mb-8">
+          <h2 className="font-semibold text-white mb-4">📈 P&L Over Time</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <AreaChart data={pnlChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="5%"
+                    stopColor={isProfitable ? "#10b981" : "#ef4444"}
+                    stopOpacity={0.3}
+                  />
+                  <stop
+                    offset="95%"
+                    stopColor={isProfitable ? "#10b981" : "#ef4444"}
+                    stopOpacity={0}
+                  />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+              <XAxis
+                dataKey="displayTime"
+                stroke="#52525b"
+                tick={{ fill: "#71717a", fontSize: 11 }}
+              />
+              <YAxis
+                stroke="#52525b"
+                tick={{ fill: "#71717a", fontSize: 11 }}
+                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v.toFixed(0))}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "#16161f",
+                  border: "1px solid #2a2a3a",
+                  borderRadius: "8px",
+                }}
+                formatter={(value: number) => [
+                  `${value >= 0 ? "+" : ""}${value.toFixed(2)} TEST`,
+                  "Cumulative P&L",
+                ]}
+              />
+              <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
+              <Area
+                type="monotone"
+                dataKey="cumulativePnl"
+                stroke={isProfitable ? "#10b981" : "#ef4444"}
+                strokeWidth={2}
+                fill="url(#pnlGradient)"
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* Volume breakdown */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         <div className="card p-5">
@@ -160,10 +341,12 @@ export default function AddressPage() {
             <span className="font-mono text-emerald-400">{formatTokens(stats.buyVolume)}</span>
           </div>
           <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-emerald-500 rounded-full"
-              style={{ 
-                width: `${Number(BigInt(stats.buyVolume)) / (Number(BigInt(stats.totalVolume)) || 1) * 100}%` 
+              style={{
+                width: `${
+                  (Number(BigInt(stats.buyVolume)) / (Number(BigInt(stats.totalVolume)) || 1)) * 100
+                }%`,
               }}
             />
           </div>
@@ -174,10 +357,12 @@ export default function AddressPage() {
             <span className="font-mono text-red-400">{formatTokens(stats.sellVolume)}</span>
           </div>
           <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-red-500 rounded-full"
-              style={{ 
-                width: `${Number(BigInt(stats.sellVolume)) / (Number(BigInt(stats.totalVolume)) || 1) * 100}%` 
+              style={{
+                width: `${
+                  (Number(BigInt(stats.sellVolume)) / (Number(BigInt(stats.totalVolume)) || 1)) * 100
+                }%`,
               }}
             />
           </div>
@@ -204,28 +389,31 @@ export default function AddressPage() {
               </thead>
               <tbody>
                 {trades.map((trade) => (
-                  <tr key={trade.id} className="table-row border-b border-[var(--border-color)] last:border-0">
+                  <tr
+                    key={trade.id}
+                    className="table-row border-b border-[var(--border-color)] last:border-0"
+                  >
                     <td className="px-4 py-3">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                        trade.isBuy 
-                          ? "bg-emerald-500/10 text-emerald-400" 
-                          : "bg-red-500/10 text-red-400"
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                          trade.isBuy
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : "bg-red-500/10 text-red-400"
+                        }`}
+                      >
                         {trade.isBuy ? "BUY" : "SELL"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <Link 
+                      <Link
                         href={`/markets/${trade.marketId}`}
                         className="text-sm text-zinc-300 hover:text-blue-400 transition-colors truncate max-w-[180px] block"
                       >
-                        {trade.marketTitle || `Market #${trade.marketId}`}
+                        {trade.marketTitle || `Market #${MARKETS[trade.marketId]?.displayId || trade.marketId}`}
                       </Link>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-sm text-zinc-400">
-                        Model {trade.modelIdx}
-                      </span>
+                      <span className="text-sm text-zinc-400">Model {trade.modelIdx}</span>
                     </td>
                     <td className="px-4 py-3 text-right">
                       <span className="font-mono text-sm text-white">
@@ -253,9 +441,7 @@ export default function AddressPage() {
             </table>
           </div>
         ) : (
-          <div className="p-8 text-center text-zinc-500">
-            No trades found
-          </div>
+          <div className="p-8 text-center text-zinc-500">No trades found</div>
         )}
       </div>
     </div>
