@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { LINKS, DELPHI_PROXY } from "@/lib/constants";
 
 export default function Footer() {
@@ -35,10 +34,14 @@ export default function Footer() {
             >
               Explorer
             </a>
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-500">
-              Built by <span className="text-purple-400">xailong_6969</span>
-            </span>
+            <a 
+              href="https://github.com/xailong-6969/Delphi-Analytics" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-purple-400 hover:text-purple-300 transition-colors font-mono text-sm"
+            >
+              github.com/xailong-6969/Delphi-Analytics
+            </a>
           </div>
         </div>
       </div>
