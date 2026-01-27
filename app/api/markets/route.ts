@@ -1,61 +1,90 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getMarketsFromCache } from "@/lib/model-cache";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const status = url.searchParams.get("status"); // "active", "settled", or null for all
-  const take = Math.min(Number(url.searchParams.get("take") || 50), 100);
-  const skip = Number(url.searchParams.get("skip") || 0);
-
+export async function GET(request: NextRequest) {
   try {
-    const where: any = {};
-    if (status === "active") where.status = 0;
-    else if (status === "settled") where.status = 2;
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
 
-    const [markets, total] = await Promise.all([
-      prisma.market.findMany({
-        where,
-        orderBy: [
-          { status: "asc" }, // Active first
-          { createdAtTime: "desc" },
-        ],
-        take,
-        skip,
-        include: {
-          _count: { select: { trades: true } },
-        },
-      }),
-      prisma.market.count({ where }),
-    ]);
+    // Get markets from database cache
+    const { active, settled } = await getMarketsFromCache(prisma);
 
-    // Format for response
-    const formatted = markets.map((m) => ({
-      marketId: m.marketId.toString(),
-      title: m.title,
-      description: m.description,
-      category: m.category,
-      configUri: m.configUri,
-      status: m.status,
-      statusLabel: m.status === 0 ? "Active" : m.status === 2 ? "Settled" : "Unknown",
-      winningModelIdx: m.winningModelIdx?.toString(),
-      createdAt: m.createdAtTime,
-      endTime: m.endTime,
-      settledAt: m.settledAt,
-      totalTrades: m._count.trades,
-      totalVolume: m.totalVolume,
-      modelsJson: m.modelsJson,
-    }));
+    // Get trade stats
+    const marketStats = await prisma.market.findMany({
+      select: {
+        marketId: true,
+        totalVolume: true,
+        settledAt: true,
+        createdAtTime: true,
+        _count: { select: { trades: true } },
+      },
+    });
+
+    const statsMap = new Map(
+      marketStats.map(m => [m.marketId.toString(), {
+        totalTrades: m._count.trades,
+        totalVolume: m.totalVolume || "0",
+        settledAt: m.settledAt,
+        createdAt: m.createdAtTime,
+      }])
+    );
+
+    // Build result
+    let result: any[] = [];
+
+    for (const m of active) {
+      const stats = statsMap.get(m.marketId);
+      result.push({
+        ...m,
+        totalTrades: stats?.totalTrades || 0,
+        totalVolume: formatVolume(stats?.totalVolume || "0"),
+        createdAt: stats?.createdAt,
+      });
+    }
+
+    for (const m of settled) {
+      const stats = statsMap.get(m.marketId);
+      result.push({
+        ...m,
+        totalTrades: stats?.totalTrades || 0,
+        totalVolume: formatVolume(stats?.totalVolume || "0"),
+        settledAt: stats?.settledAt,
+        createdAt: stats?.createdAt,
+      });
+    }
+
+    // Filter by status
+    if (status === "active") {
+      result = result.filter(m => m.status === "active");
+    } else if (status === "settled") {
+      result = result.filter(m => m.status === "settled");
+    }
 
     return NextResponse.json({
-      markets: formatted,
-      total,
-      take,
-      skip,
+      markets: result,
+      meta: {
+        total: result.length,
+        active: active.length,
+        settled: settled.length,
+      },
     });
-  } catch (e) {
-    console.error("Markets API error:", e);
+  } catch (error) {
+    console.error("Markets error:", error);
     return NextResponse.json({ error: "Failed to fetch markets" }, { status: 500 });
+  }
+}
+
+function formatVolume(vol: string): string {
+  try {
+    const num = Number(BigInt(vol)) / 1e18;
+    if (num >= 1_000_000) return (num / 1_000_000).toFixed(2) + "M";
+    if (num >= 1_000) return (num / 1_000).toFixed(2) + "K";
+    return num.toFixed(2);
+  } catch {
+    return "0.00";
   }
 }
