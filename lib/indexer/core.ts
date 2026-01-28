@@ -141,38 +141,52 @@ async function handleNewMarket(prisma: PrismaClient, log: Log, blockTime: Date) 
   });
 }
 
+// FIXED: Handle duplicate trades gracefully with try-catch for P2002 errors
 async function handleTradeExecuted(prisma: PrismaClient, log: Log, blockTime: Date): Promise<boolean> {
   const args = (log as any).args;
   const { marketId, allowedModelIdx, trader, isBuy, tokensDelta, modelSharesDelta, modelNewPrice, modelNewSupply, marketNewSupply } = args;
 
   const id = `${log.transactionHash}:${log.logIndex}`;
-  const existing = await prisma.trade.findUnique({ where: { id } });
-  if (existing) return false;
-
   const mktId = BigInt(marketId.toString());
-  await prisma.market.upsert({ where: { marketId: mktId }, update: {}, create: { marketId: mktId, status: 0 } });
-
-  await prisma.trade.create({
-    data: {
-      id,
-      txHash: log.transactionHash!,
-      logIndex: Number(log.logIndex),
-      blockNumber: BigInt(log.blockNumber!.toString()),
-      blockTime,
-      marketId: mktId,
-      modelIdx: BigInt(allowedModelIdx.toString()),
-      trader: getAddress(trader),
-      isBuy: Boolean(isBuy),
-      tokensDelta: tokensDelta.toString(),
-      sharesDelta: modelSharesDelta.toString(),
-      modelNewPrice: modelNewPrice.toString(),
-      modelNewSupply: modelNewSupply.toString(),
-      marketNewSupply: marketNewSupply.toString(),
-      impliedProbability: priceToPercent(BigInt(modelNewPrice.toString())),
-    },
+  
+  // Ensure market exists
+  await prisma.market.upsert({ 
+    where: { marketId: mktId }, 
+    update: {}, 
+    create: { marketId: mktId, status: 0 } 
   });
 
-  return true;
+  // Try to create the trade, catch duplicate errors
+  try {
+    await prisma.trade.create({
+      data: {
+        id,
+        txHash: log.transactionHash!,
+        logIndex: Number(log.logIndex),
+        blockNumber: BigInt(log.blockNumber!.toString()),
+        blockTime,
+        marketId: mktId,
+        modelIdx: BigInt(allowedModelIdx.toString()),
+        trader: getAddress(trader),
+        isBuy: Boolean(isBuy),
+        tokensDelta: tokensDelta.toString(),
+        sharesDelta: modelSharesDelta.toString(),
+        modelNewPrice: modelNewPrice.toString(),
+        modelNewSupply: modelNewSupply.toString(),
+        marketNewSupply: marketNewSupply.toString(),
+        impliedProbability: priceToPercent(BigInt(modelNewPrice.toString())),
+      },
+    });
+    return true;
+  } catch (e: any) {
+    // Handle duplicate key error (P2002) gracefully - just skip
+    if (e.code === 'P2002') {
+      // Trade already exists, this is fine - skip silently
+      return false;
+    }
+    // Re-throw any other error
+    throw e;
+  }
 }
 
 async function handleWinnersSubmitted(prisma: PrismaClient, log: Log, blockTime: Date) {
@@ -192,9 +206,8 @@ async function handleWinnersSubmitted(prisma: PrismaClient, log: Log, blockTime:
 // ============================================
 export async function runIndexer(
   prisma: PrismaClient,
-  options: { fromBlock?: bigint; toBlock?: bigint; batchSize?: number } = {}
+  options: { fromBlock?: bigint; toBlock?: bigint; batchSize?: number; onProgress?: (current: bigint, target: bigint) => void } = {}
 ): Promise<{ indexed: number; lastBlock: bigint }> {
-  // CRITICAL FIX: Ensure prisma is defined
   if (!prisma) throw new Error("PrismaClient is required by runIndexer");
 
   const client = getClient();
@@ -206,7 +219,6 @@ export async function runIndexer(
   if (options.fromBlock !== undefined) {
     fromBlock = options.fromBlock;
   } else {
-    // FIX: Added null check for the result of findUnique
     const state = await prisma.indexerState.findUnique({ where: { id: "delphi" } });
     fromBlock = (state && state.lastBlock && state.lastBlock > 0n) 
       ? BigInt(state.lastBlock.toString()) + 1n 
@@ -230,8 +242,14 @@ export async function runIndexer(
     } catch { return new Date(); }
   };
 
+  console.log(`📦 Indexing from block ${fromBlock} to ${targetBlock}`);
+
   while (currentBlock <= targetBlock) {
     const endBlock = currentBlock + batchSize - 1n > targetBlock ? targetBlock : currentBlock + batchSize - 1n;
+
+    if (options.onProgress) {
+      options.onProgress(currentBlock, targetBlock);
+    }
 
     const logs = await client.getLogs({
       address: CONTRACT_ADDRESS,
@@ -243,9 +261,17 @@ export async function runIndexer(
     for (const log of logs) {
       const blockTime = await getBlockTime(log.blockNumber!);
       switch (log.eventName) {
-        case "NewMarket": await handleNewMarket(prisma, log, blockTime); break;
-        case "TradeExecuted": if (await handleTradeExecuted(prisma, log, blockTime)) totalIndexed++; break;
-        case "WinnersSubmitted": await handleWinnersSubmitted(prisma, log, blockTime); break;
+        case "NewMarket": 
+          await handleNewMarket(prisma, log, blockTime); 
+          break;
+        case "TradeExecuted": 
+          if (await handleTradeExecuted(prisma, log, blockTime)) {
+            totalIndexed++;
+          }
+          break;
+        case "WinnersSubmitted": 
+          await handleWinnersSubmitted(prisma, log, blockTime); 
+          break;
       }
     }
 
@@ -263,7 +289,7 @@ export async function runIndexer(
 }
 
 // ============================================
-// RECALCULATE STATS (Remains unchanged)
+// RECALCULATE STATS
 // ============================================
 export async function recalculateTraderStats(prisma: PrismaClient): Promise<number> {
   const settledMarkets = await prisma.market.findMany({ where: { status: 2, winningModelIdx: { not: null } } });
