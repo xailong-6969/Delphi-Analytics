@@ -23,7 +23,7 @@ export async function GET(req: Request) {
       case "index": {
         // Run incremental indexing
         const result = await runIndexer(prisma, {
-          batchSize: 2000,
+          batchSize: 500,
           onProgress: (current, target) => {
             console.log(`Progress: ${current}/${target}`);
           },
