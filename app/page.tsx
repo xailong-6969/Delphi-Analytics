@@ -74,13 +74,13 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:py-12">
       {/* Hero Section with 3D effect */}
-      <motion.div 
+      <motion.div
         className="text-center mb-12"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
       >
-        <motion.h1 
+        <motion.h1
           className="text-4xl sm:text-5xl font-bold mb-4"
           initial={{ y: -50 }}
           animate={{ y: 0 }}
@@ -88,7 +88,7 @@ export default function HomePage() {
         >
           <span className="gradient-text">Delphi Analytics</span>
         </motion.h1>
-        <motion.p 
+        <motion.p
           className="text-lg text-zinc-400 max-w-2xl mx-auto"
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
@@ -112,7 +112,7 @@ export default function HomePage() {
               />
             </Card3D>
           </StaggerItem>
-          
+
           <StaggerItem>
             <Card3D>
               <StatCard
@@ -123,7 +123,7 @@ export default function HomePage() {
               />
             </Card3D>
           </StaggerItem>
-          
+
           <StaggerItem>
             <Card3D>
               <StatCard
@@ -134,7 +134,7 @@ export default function HomePage() {
               />
             </Card3D>
           </StaggerItem>
-          
+
           <StaggerItem>
             <Card3D>
               <StatCard
@@ -205,7 +205,7 @@ export default function HomePage() {
       </div>
 
       {/* Recent Trades with slide-in effect */}
-      {data.recentTrades.length > 0 && (
+      {data.recentTrades && data.recentTrades.length > 0 && (
         <SlideIn direction="up" delay={0.4}>
           <div className="card overflow-hidden">
             <div className="p-4 border-b border-[var(--border-color)] flex items-center justify-between">
@@ -241,11 +241,10 @@ export default function HomePage() {
                       >
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                              trade.isBuy
+                            className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${trade.isBuy
                                 ? "bg-emerald-500/10 text-emerald-400"
                                 : "bg-red-500/10 text-red-400"
-                            }`}
+                              }`}
                           >
                             {trade.isBuy ? "BUY" : "SELL"}
                           </span>
@@ -292,7 +291,7 @@ export default function HomePage() {
       )}
 
       {/* Indexer Status */}
-      <motion.div 
+      <motion.div
         className="mt-6 text-center"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
