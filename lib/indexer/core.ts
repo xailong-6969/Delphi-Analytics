@@ -141,7 +141,7 @@ async function handleNewMarket(prisma: PrismaClient, log: Log, blockTime: Date) 
   });
 }
 
-// FIXED: Handle duplicate trades gracefully with try-catch for P2002 errors
+// FIXED: Better duplicate handling - check if trade exists first
 async function handleTradeExecuted(prisma: PrismaClient, log: Log, blockTime: Date): Promise<boolean> {
   const args = (log as any).args;
   const { marketId, allowedModelIdx, trader, isBuy, tokensDelta, modelSharesDelta, modelNewPrice, modelNewSupply, marketNewSupply } = args;
@@ -149,6 +149,13 @@ async function handleTradeExecuted(prisma: PrismaClient, log: Log, blockTime: Da
   const id = `${log.transactionHash}:${log.logIndex}`;
   const mktId = BigInt(marketId.toString());
   
+  // Check if trade already exists
+  const existing = await prisma.trade.findUnique({ where: { id } });
+  if (existing) {
+    // Trade already indexed, skip silently
+    return false;
+  }
+
   // Ensure market exists
   await prisma.market.upsert({ 
     where: { marketId: mktId }, 
@@ -156,7 +163,7 @@ async function handleTradeExecuted(prisma: PrismaClient, log: Log, blockTime: Da
     create: { marketId: mktId, status: 0 } 
   });
 
-  // Try to create the trade, catch duplicate errors
+  // Create the trade
   try {
     await prisma.trade.create({
       data: {
@@ -179,9 +186,8 @@ async function handleTradeExecuted(prisma: PrismaClient, log: Log, blockTime: Da
     });
     return true;
   } catch (e: any) {
-    // Handle duplicate key error (P2002) gracefully - just skip
+    // Handle duplicate key error gracefully (shouldn't happen now, but just in case)
     if (e.code === 'P2002') {
-      // Trade already exists, this is fine - skip silently
       return false;
     }
     // Re-throw any other error
@@ -202,7 +208,7 @@ async function handleWinnersSubmitted(prisma: PrismaClient, log: Log, blockTime:
 }
 
 // ============================================
-// MAIN INDEXER
+// MAIN INDEXER - FIXED
 // ============================================
 export async function runIndexer(
   prisma: PrismaClient,
@@ -225,7 +231,11 @@ export async function runIndexer(
       : 9000000n;
   }
 
-  if (fromBlock > targetBlock) return { indexed: 0, lastBlock: fromBlock - 1n };
+  // If already caught up, return immediately
+  if (fromBlock > targetBlock) {
+    console.log(`✅ Already caught up (fromBlock ${fromBlock} > targetBlock ${targetBlock})`);
+    return { indexed: 0, lastBlock: fromBlock - 1n };
+  }
 
   let totalIndexed = 0;
   let currentBlock = fromBlock;
@@ -258,6 +268,8 @@ export async function runIndexer(
       events: [EVENT_NEW_MARKET, EVENT_TRADE_EXECUTED, EVENT_WINNERS],
     });
 
+    // Process logs
+    let batchIndexed = 0;
     for (const log of logs) {
       const blockTime = await getBlockTime(log.blockNumber!);
       switch (log.eventName) {
@@ -266,7 +278,7 @@ export async function runIndexer(
           break;
         case "TradeExecuted": 
           if (await handleTradeExecuted(prisma, log, blockTime)) {
-            totalIndexed++;
+            batchIndexed++;
           }
           break;
         case "WinnersSubmitted": 
@@ -275,16 +287,24 @@ export async function runIndexer(
       }
     }
 
+    totalIndexed += batchIndexed;
+
+    // Update indexer state after each batch
     await prisma.indexerState.upsert({
       where: { id: "delphi" },
-      update: { lastBlock: endBlock, updatedAt: new Date() },
-      create: { id: "delphi", lastBlock: endBlock },
+      update: { lastBlock: endBlock, updatedAt: new Date(), isRunning: false },
+      create: { id: "delphi", lastBlock: endBlock, isRunning: false },
     });
+
+    if (batchIndexed > 0) {
+      console.log(`  Block ${currentBlock}-${endBlock}: +${batchIndexed} trades`);
+    }
 
     currentBlock = endBlock + 1n;
     if (blockTimestampCache.size > 500) blockTimestampCache.clear();
   }
 
+  console.log(`✅ Indexing complete: ${totalIndexed} new trades indexed`);
   return { indexed: totalIndexed, lastBlock: targetBlock };
 }
 
