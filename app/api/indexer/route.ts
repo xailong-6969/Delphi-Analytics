@@ -83,7 +83,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const result = await runIndexer(prisma, { batchSize: 2000 });
+    const result = await runIndexer(prisma, { batchSize: 500 });
     return NextResponse.json({ success: true, ...result });
   } catch (error) {
     console.error("Indexer POST error:", error);
