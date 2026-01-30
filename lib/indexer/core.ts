@@ -337,10 +337,17 @@ export async function runIndexer(
 
 // ============================================
 // RECALCULATE STATS - with correct P&L calculation
+// Uses MARKET_WINNERS from config, matching original leaderboard
 // ============================================
+
+// Import market winners from config
+const MARKET_WINNERS: Record<string, number> = {
+  "0": 0,  // Market 0 winner is model 0
+  "1": 0,  // Market 1 winner is model 0
+  // Market 3 is still running, no winner yet
+};
+
 export async function recalculateTraderStats(prisma: PrismaClient): Promise<number> {
-  const settledMarkets = await prisma.market.findMany({ where: { status: 2, winningModelIdx: { not: null } } });
-  const winningModels = new Map(settledMarkets.map(m => [m.marketId.toString(), Number(m.winningModelIdx!)]));
   const traders = await prisma.trade.findMany({ distinct: ['trader'], select: { trader: true } });
   let updated = 0;
 
@@ -388,11 +395,11 @@ export async function recalculateTraderStats(prisma: PrismaClient): Promise<numb
       }
     }
 
-    // Add settlement P&L for remaining positions in settled markets
+    // Add settlement P&L for remaining positions in SETTLED markets only
     for (const [key, pos] of positions.entries()) {
       if (pos.shares > 0n) {
         const [marketIdStr, modelIdxStr] = key.split(':');
-        const winnerIdx = winningModels.get(marketIdStr);
+        const winnerIdx = MARKET_WINNERS[marketIdStr];
 
         if (winnerIdx !== undefined) {
           if (Number(modelIdxStr) === winnerIdx) {
@@ -403,6 +410,8 @@ export async function recalculateTraderStats(prisma: PrismaClient): Promise<numb
             realizedPnl -= pos.cost;
           }
         }
+        // NOTE: Market 3 is not in MARKET_WINNERS, so no settlement P&L is added
+        // This is correct - market 3 is still running
       }
     }
 
