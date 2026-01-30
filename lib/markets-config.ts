@@ -51,15 +51,15 @@ export const MARKETS: Record<string, MarketConfig> = {
     internalId: "3",
     displayId: "3",
     title: "Gensyn Lightweight General Reasoning Benchmark",
-    status: "active",
+    status: "settled",
+    winnerIdx: 1,  // Qwen/Qwen3-8B
     endDate: "Jan 30",
-    endTimestamp: "2026-01-30T17:40:00Z",  // Jan 30, 2026 5:40 PM UTC = 11:10 PM IST
     models: [
-      { idx: 0, name: "QWEN/QWEN3-8B", family: "QWEN" },
-      { idx: 1, name: "MISTRALAI/MINISTRAL-3B-2412", family: "MISTRALAI" },
-      { idx: 2, name: "IBM-GRANITE/GRANITE-4.0-TINY-PREVIEW", family: "IBM-GRANITE" },
-      { idx: 3, name: "ALLENAI/OLMO-3-7B-INSTRUCT", family: "ALLENAI" },
-      { idx: 4, name: "META-LLAMA/LLAMA-3.1-8B-INSTRUCT", family: "META-LLAMA" },
+      { idx: 0, name: "MISTRALAI/MINISTRAL-3-8B-INSTRUCT-2512", family: "MISTRALAI" },
+      { idx: 1, name: "QWEN/QWEN3-8B", family: "QWEN" },
+      { idx: 2, name: "ALLENAI/OLMO-3-7B-INSTRUCT", family: "ALLENAI" },
+      { idx: 3, name: "META-LLAMA/LLAMA-3.1-8B-INSTRUCT", family: "META-LLAMA" },
+      { idx: 4, name: "IBM-GRANITE/GRANITE-4.0-H-TINY", family: "IBM-GRANITE" },
     ],
   },
 };
@@ -95,6 +95,7 @@ export function getModelName(marketId: string, modelIdx: number): string {
 export const MARKET_WINNERS: Record<string, number> = {
   "0": 0,
   "1": 0,
+  "3": 1,  // Qwen/Qwen3-8B won
 };
 
 // Check if a market has ended based on endTimestamp
