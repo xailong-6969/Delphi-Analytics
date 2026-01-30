@@ -1,35 +1,6 @@
-const { PrismaClient } = require("@prisma/client");
 const http = require("http");
 
-const prisma = new PrismaClient();
-
-// Update market volumes
-async function updateMarketVolumes() {
-    console.log("📊 Updating market volumes...");
-    const markets = await prisma.market.findMany({ select: { marketId: true } });
-
-    for (const { marketId } of markets) {
-        const trades = await prisma.trade.findMany({
-            where: { marketId },
-            select: { tokensDelta: true }
-        });
-
-        const totalVolume = trades.reduce((acc, t) => {
-            const delta = BigInt(t.tokensDelta);
-            return acc + (delta < 0n ? -delta : delta);
-        }, 0n);
-
-        await prisma.market.update({
-            where: { marketId },
-            data: { totalVolume: totalVolume.toString(), totalTrades: trades.length }
-        });
-
-        console.log(`  Market ${marketId}: ${trades.length} trades, volume updated`);
-    }
-    console.log("✅ Market volumes updated");
-}
-
-// Call the cron API
+// Call the cron API - this handles all updates including market volumes
 async function callCronAPI() {
     const secret = process.env.CRON_SECRET || "delphi-cron-2024";
     const url = `http://localhost:3000/api/cron?secret=${secret}`;
@@ -54,25 +25,28 @@ async function callCronAPI() {
     });
 }
 
-// Main scheduler
+// Main scheduler - only calls cron API, no separate Prisma connection
 async function runScheduler() {
-    console.log("🚀 Volume update scheduler started");
+    console.log("🚀 Cron scheduler started");
 
     // Wait for Next.js server to start
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 10000));
 
-    // Initial update
-    await updateMarketVolumes();
+    // Initial call
+    console.log("📊 Running initial cron...");
+    await callCronAPI();
 
-    // Run every 60 seconds
+    // Run every 2 minutes (120 seconds) to reduce connection pressure
+    const INTERVAL_MS = 120 * 1000;
+    console.log(`⏰ Scheduling cron every ${INTERVAL_MS / 1000} seconds`);
+
     setInterval(async () => {
         try {
             await callCronAPI();
-            await updateMarketVolumes();
         } catch (e) {
             console.error("Scheduler error:", e.message);
         }
-    }, 60 * 1000);
+    }, INTERVAL_MS);
 }
 
 // Run on module load
