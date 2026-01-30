@@ -1,130 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { VALID_MARKET_IDS_BIGINT, MARKET_WINNERS } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 30;
 
-// Cache for leaderboard data - 60 seconds to reduce database load
-const CACHE_DURATION = 60 * 1000;
-let cachedData: {
-  traders: Array<{ address: string; realizedPnl: string; totalVolume: string; totalTrades: number; rank: number }>;
+// Simple in-memory cache for 5 minutes
+let cachedLeaderboard: {
+  data: Array<{ address: string; realizedPnl: string; totalVolume: string; totalTrades: number; rank: number }>;
   timestamp: number;
 } | null = null;
 
-async function getLeaderboardData() {
-  // Return cached data if fresh
-  if (cachedData && Date.now() - cachedData.timestamp < CACHE_DURATION) {
-    return cachedData.traders;
-  }
-
-  // Recalculate leaderboard
-  const allTrades = await prisma.trade.findMany({
-    where: { marketId: { in: VALID_MARKET_IDS_BIGINT } },
-    select: {
-      trader: true,
-      marketId: true,
-      modelIdx: true,
-      isBuy: true,
-      tokensDelta: true,
-      sharesDelta: true,
-    },
-  });
-
-  // Calculate stats per trader
-  const traderStats = new Map<string, {
-    address: string;
-    realizedPnl: bigint;
-    totalVolume: bigint;
-    totalTrades: number;
-    positions: Map<string, { shares: bigint; cost: bigint }>;
-  }>();
-
-  for (const trade of allTrades) {
-    const address = trade.trader.toLowerCase();
-    let stats = traderStats.get(address);
-
-    if (!stats) {
-      stats = {
-        address: trade.trader,
-        realizedPnl: 0n,
-        totalVolume: 0n,
-        totalTrades: 0,
-        positions: new Map(),
-      };
-      traderStats.set(address, stats);
-    }
-
-    const tokens = BigInt(trade.tokensDelta);
-    const shares = BigInt(trade.sharesDelta);
-    const absTokens = tokens < 0n ? -tokens : tokens;
-    const absShares = shares < 0n ? -shares : shares;
-
-    stats.totalVolume += absTokens;
-    stats.totalTrades += 1;
-
-    const posKey = `${trade.marketId}:${trade.modelIdx}`;
-    let pos = stats.positions.get(posKey) || { shares: 0n, cost: 0n };
-
-    if (trade.isBuy) {
-      pos.shares += absShares;
-      pos.cost += absTokens;
-    } else {
-      if (pos.shares > 0n) {
-        const avgCost = (pos.cost * BigInt(1e18)) / pos.shares;
-        const costBasis = (avgCost * absShares) / BigInt(1e18);
-        const pnl = absTokens - costBasis;
-        stats.realizedPnl += pnl;
-
-        pos.shares -= absShares;
-        pos.cost -= costBasis;
-        if (pos.shares < 0n) pos.shares = 0n;
-        if (pos.cost < 0n) pos.cost = 0n;
-      } else {
-        stats.realizedPnl += absTokens;
-      }
-    }
-
-    stats.positions.set(posKey, pos);
-  }
-
-  // Add settlement P&L
-  for (const [, stats] of traderStats) {
-    for (const [posKey, pos] of stats.positions) {
-      if (pos.shares > 0n) {
-        const [marketId, modelIdx] = posKey.split(":");
-        const winnerIdx = MARKET_WINNERS[marketId];
-
-        if (winnerIdx !== undefined) {
-          if (Number(modelIdx) === winnerIdx) {
-            stats.realizedPnl += pos.shares - pos.cost;
-          } else {
-            stats.realizedPnl -= pos.cost;
-          }
-        }
-      }
-    }
-  }
-
-  // Convert to array and sort by P&L
-  let traders = Array.from(traderStats.values()).map(t => ({
-    address: t.address,
-    realizedPnl: t.realizedPnl.toString(),
-    totalVolume: t.totalVolume.toString(),
-    totalTrades: t.totalTrades,
-  }));
-
-  traders.sort((a, b) => Number(BigInt(b.realizedPnl) - BigInt(a.realizedPnl)));
-
-  const tradersWithRank = traders.map((t, idx) => ({
-    ...t,
-    rank: idx + 1,
-  }));
-
-  // Update cache
-  cachedData = { traders: tradersWithRank, timestamp: Date.now() };
-  return tradersWithRank;
-}
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -134,43 +20,114 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "pnl";
     const search = searchParams.get("search")?.toLowerCase();
 
-    // Get cached leaderboard data (sorted by P&L)
-    let tradersWithRank = await getLeaderboardData();
+    // Use cache if valid
+    const now = Date.now();
+    if (cachedLeaderboard && now - cachedLeaderboard.timestamp < CACHE_DURATION && !search) {
+      let traders = cachedLeaderboard.data;
 
-    // Re-sort if needed (cached data is sorted by P&L)
-    if (sortBy === "volume") {
-      tradersWithRank = [...tradersWithRank].sort((a, b) =>
-        Number(BigInt(b.totalVolume) - BigInt(a.totalVolume))
-      ).map((t, idx) => ({ ...t, rank: idx + 1 }));
-    } else if (sortBy === "trades") {
-      tradersWithRank = [...tradersWithRank].sort((a, b) =>
-        b.totalTrades - a.totalTrades
-      ).map((t, idx) => ({ ...t, rank: idx + 1 }));
+      // Re-sort if needed
+      if (sortBy === "volume") {
+        traders = [...traders].sort((a, b) =>
+          Number(BigInt(b.totalVolume) - BigInt(a.totalVolume))
+        ).map((t, idx) => ({ ...t, rank: idx + 1 }));
+      } else if (sortBy === "trades") {
+        traders = [...traders].sort((a, b) =>
+          b.totalTrades - a.totalTrades
+        ).map((t, idx) => ({ ...t, rank: idx + 1 }));
+      }
+
+      const totalTraders = traders.length;
+      const totalPages = Math.ceil(totalTraders / limit);
+      const offset = (page - 1) * limit;
+      const paginated = traders.slice(offset, offset + limit);
+
+      return NextResponse.json({
+        leaderboard: paginated,
+        totalTraders,
+        totalPages,
+        currentPage: page,
+        cached: true,
+      });
     }
 
-    const totalTraders = tradersWithRank.length;
+    // Fetch from pre-computed TraderStats table (much faster!)
+    let orderBy: { realizedPnl?: "desc"; totalVolume?: "desc"; totalTrades?: "desc" } = { realizedPnl: "desc" };
+    if (sortBy === "volume") orderBy = { totalVolume: "desc" };
+    else if (sortBy === "trades") orderBy = { totalTrades: "desc" };
 
     // Handle search
     if (search) {
-      const found = tradersWithRank.filter(t =>
-        t.address.toLowerCase().includes(search)
-      );
+      const found = await prisma.traderStats.findMany({
+        where: {
+          address: { contains: search, mode: "insensitive" },
+        },
+        orderBy,
+        take: 100,
+      });
+
+      const results = found.map((t, idx) => ({
+        address: t.address,
+        realizedPnl: t.realizedPnl,
+        totalVolume: t.totalVolume,
+        totalTrades: t.totalTrades,
+        rank: idx + 1,
+      }));
+
       return NextResponse.json({
-        leaderboard: found,
-        totalTraders,
+        leaderboard: results,
+        totalTraders: results.length,
         totalPages: 1,
         currentPage: 1,
       });
     }
 
+    // Get total count
+    const totalTraders = await prisma.traderStats.count();
+
+    // Fetch all for caching and ranking (only addresses with trades)
+    const allTraders = await prisma.traderStats.findMany({
+      where: { totalTrades: { gt: 0 } },
+      orderBy: { realizedPnl: "desc" },
+      select: {
+        address: true,
+        realizedPnl: true,
+        totalVolume: true,
+        totalTrades: true,
+      },
+    });
+
+    // Add ranks
+    const tradersWithRank = allTraders.map((t, idx) => ({
+      address: t.address,
+      realizedPnl: t.realizedPnl,
+      totalVolume: t.totalVolume,
+      totalTrades: t.totalTrades,
+      rank: idx + 1,
+    }));
+
+    // Update cache
+    cachedLeaderboard = { data: tradersWithRank, timestamp: now };
+
+    // Re-sort if needed
+    let finalTraders = tradersWithRank;
+    if (sortBy === "volume") {
+      finalTraders = [...tradersWithRank].sort((a, b) =>
+        Number(BigInt(b.totalVolume) - BigInt(a.totalVolume))
+      ).map((t, idx) => ({ ...t, rank: idx + 1 }));
+    } else if (sortBy === "trades") {
+      finalTraders = [...tradersWithRank].sort((a, b) =>
+        b.totalTrades - a.totalTrades
+      ).map((t, idx) => ({ ...t, rank: idx + 1 }));
+    }
+
     // Paginate
-    const totalPages = Math.ceil(totalTraders / limit);
+    const totalPages = Math.ceil(finalTraders.length / limit);
     const offset = (page - 1) * limit;
-    const paginated = tradersWithRank.slice(offset, offset + limit);
+    const paginated = finalTraders.slice(offset, offset + limit);
 
     return NextResponse.json({
       leaderboard: paginated,
-      totalTraders,
+      totalTraders: finalTraders.length,
       totalPages,
       currentPage: page,
     });
