@@ -62,11 +62,25 @@ export const MARKETS: Record<string, MarketConfig> = {
       { idx: 4, name: "IBM-GRANITE/GRANITE-4.0-H-TINY", family: "IBM-GRANITE" },
     ],
   },
+  "4": {
+    internalId: "4",
+    displayId: "4",
+    title: "Gensyn Commercial-Fast Reasoning Benchmark",
+    status: "active",
+    endDate: "Feb 27",
+    endTimestamp: "2026-02-27T19:03:00Z",  // Feb 27, 2026 7:03 PM UTC
+    models: [
+      { idx: 0, name: "CLAUDE-HAIKU-4-5", family: "CLAUDE" },
+      { idx: 1, name: "GEMINI-3-FLASH-PREVIEW", family: "GEMINI" },
+      { idx: 2, name: "GPT-5-MINI", family: "GPT" },
+      { idx: 3, name: "GROK-4.1-FAST-REASONING", family: "GROK" },
+    ],
+  },
 };
 
 // Valid internal market IDs
-export const VALID_MARKET_IDS = ["0", "1", "3"];
-export const VALID_MARKET_IDS_BIGINT = [0n, 1n, 3n];
+export const VALID_MARKET_IDS = ["0", "1", "3", "4"];
+export const VALID_MARKET_IDS_BIGINT = [0n, 1n, 3n, 4n];
 
 // Get market config by internal ID
 export function getMarketConfig(internalId: string): MarketConfig | null {

@@ -344,7 +344,7 @@ export async function runIndexer(
 const MARKET_WINNERS: Record<string, number> = {
   "0": 0,  // Market 0 winner is model 0
   "1": 0,  // Market 1 winner is model 0
-  // Market 3 is still running, no winner yet
+  "3": 1,  // Market 3 winner is Qwen/Qwen3-8B (model idx 1)
 };
 
 export async function recalculateTraderStats(prisma: PrismaClient): Promise<number> {
