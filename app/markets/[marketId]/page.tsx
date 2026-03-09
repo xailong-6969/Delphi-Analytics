@@ -51,6 +51,7 @@ async function getMarketData(internalId: string) {
       displayId: config.displayId,
       title: config.title,
       status: config.status,
+      type: config.type,
       totalTrades: market?._count.trades || 0,
       totalVolume: market?.totalVolume?.toString() || "0",
       endDate: config.endDate,
@@ -98,6 +99,9 @@ export default async function MarketDetailPage({ params }: PageProps) {
   }
 
   const isSettled = market.status === "settled";
+  const isOutcome = market.type === "outcome";
+  const entryLabel = isOutcome ? "Outcomes" : "Models";
+  const winnerLabel = isOutcome ? "Winning Outcome" : "Winner";
   const winnerModel = market.winnerIdx !== undefined
     ? market.models.find(m => m.idx === market.winnerIdx)
     : undefined;
@@ -140,7 +144,7 @@ export default async function MarketDetailPage({ params }: PageProps) {
           color="purple"
         />
         <StatCard
-          title="Models"
+          title={entryLabel}
           value={market.models.length}
           color="cyan"
         />
@@ -152,16 +156,16 @@ export default async function MarketDetailPage({ params }: PageProps) {
           <div className="flex items-center gap-4">
             <div className="text-4xl">🏆</div>
             <div>
-              <p className="text-sm text-amber-400/70 mb-1">Winner</p>
+              <p className="text-sm text-amber-400/70 mb-1">{winnerLabel}</p>
               <p className="text-xl font-bold text-amber-300">{winnerModel.name}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Models List */}
+      {/* Models / Outcomes List */}
       <div className="card p-6 mb-8">
-        <h2 className="text-lg font-semibold text-white mb-4">Models</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">{entryLabel}</h2>
         <div className="space-y-3">
           {market.models.map((model) => {
             const isWinner = isSettled && market.winnerIdx === model.idx;
@@ -184,7 +188,9 @@ export default async function MarketDetailPage({ params }: PageProps) {
                   </span>
                   {isWinner && <span className="text-amber-400">🏆</span>}
                 </div>
-                <span className="text-sm text-zinc-500">{model.family}</span>
+                {!isOutcome && (
+                  <span className="text-sm text-zinc-500">{model.family}</span>
+                )}
               </div>
             );
           })}
@@ -203,7 +209,7 @@ export default async function MarketDetailPage({ params }: PageProps) {
                 <tr className="text-left text-xs text-zinc-500 border-b border-[var(--border-color)]">
                   <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Trader</th>
-                  <th className="px-4 py-3 font-medium">Model</th>
+                  <th className="px-4 py-3 font-medium">{isOutcome ? "Outcome" : "Model"}</th>
                   <th className="px-4 py-3 font-medium text-right">Amount</th>
                   <th className="px-4 py-3 font-medium text-right">Price</th>
                   <th className="px-4 py-3 font-medium text-right">Time</th>
@@ -281,7 +287,7 @@ export default async function MarketDetailPage({ params }: PageProps) {
         <h2 className="font-semibold text-white mb-4">Links</h2>
         <div className="flex flex-wrap gap-4">
           <a
-            href={`https://delphi.gensyn.ai/market/${internalId}`}
+            href={`https://delphi.gensyn.ai/market/${market.internalId}`}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
