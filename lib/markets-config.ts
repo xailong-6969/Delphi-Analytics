@@ -5,6 +5,7 @@ export interface MarketConfig {
   displayId: string;
   title: string;
   status: "active" | "settled";
+  type: "model" | "outcome";  // "model" for AI benchmarks, "outcome" for YES/NO markets
   winnerIdx?: number;
   endDate: string;           // Display format like "Jan 30"
   endTimestamp?: string;     // ISO timestamp for countdown: "2026-01-30T17:40:00Z"
@@ -22,6 +23,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     displayId: "1",
     title: "Gensyn Middleweight General Reasoning Benchmark",
     status: "settled",
+    type: "model",
     winnerIdx: 0,
     endDate: "Dec 31",
     models: [
@@ -37,6 +39,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     displayId: "2",
     title: "Gensyn Middleweight General Reasoning Benchmark (II)",
     status: "settled",
+    type: "model",
     winnerIdx: 0,
     endDate: "Dec 30",
     models: [
@@ -52,6 +55,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     displayId: "3",
     title: "Gensyn Lightweight General Reasoning Benchmark",
     status: "settled",
+    type: "model",
     winnerIdx: 1,  // Qwen/Qwen3-8B
     endDate: "Jan 30",
     models: [
@@ -67,6 +71,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     displayId: "4",
     title: "Gensyn Commercial-Fast Reasoning Benchmark",
     status: "settled",
+    type: "model",
     winnerIdx: 3,  // grok-4.1-fast-reasoning
     endDate: "Feb 27",
     endTimestamp: "2026-02-27T19:03:00Z",
@@ -82,6 +87,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     displayId: "5",
     title: "Will The Trump Administration Reverse Its Ban On Anthropic In The Federal Government By End Of Week, Sunday March 8 At 11:59 PM UTC?",
     status: "settled",
+    type: "outcome",
     winnerIdx: 0,  // NO won
     endDate: "Mar 8",
     endTimestamp: "2026-03-08T22:39:00Z",
@@ -95,6 +101,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     displayId: "6",
     title: "Will Timothee Chalamet Win Best Actor At The Oscars On Sunday, March 15th?",
     status: "active",
+    type: "outcome",
     endDate: "Mar 16",
     endTimestamp: "2026-03-16T08:41:00Z",
     models: [
