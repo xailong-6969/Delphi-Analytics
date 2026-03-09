@@ -37,6 +37,7 @@ async function getMarketsData() {
         displayId: config.displayId,
         title: config.title,
         status: config.status,
+        type: config.type,
         totalTrades: dbData.totalTrades,
         totalVolume: dbData.totalVolume,
         models: config.models,
@@ -127,6 +128,10 @@ export default async function MarketsPage() {
 }
 
 function MarketCard({ market, isSettled = false }: { market: any; isSettled?: boolean }) {
+  const isOutcome = market.type === "outcome";
+  const entryLabel = isOutcome ? "Outcomes" : "Models";
+  const winnerLabel = isOutcome ? "Winning Outcome" : "Winner";
+
   return (
     <Link href={`/markets/${market.internalId}`} className="card p-5 card-hover block">
       {/* Header */}
@@ -147,18 +152,18 @@ function MarketCard({ market, isSettled = false }: { market: any; isSettled?: bo
       {/* Winner for Settled */}
       {isSettled && market.winnerName && (
         <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-          <p className="text-xs text-amber-400/70 mb-1">🏆 Winner</p>
+          <p className="text-xs text-amber-400/70 mb-1">🏆 {winnerLabel}</p>
           <p className="text-sm text-amber-300 font-semibold truncate">
             {market.winnerName}
           </p>
         </div>
       )}
 
-      {/* Models */}
+      {/* Models / Outcomes */}
       {market.models?.length > 0 && (
         <div className="mb-4">
           <p className="text-xs text-zinc-500 mb-2">
-            Models ({market.models.length})
+            {entryLabel} ({market.models.length})
           </p>
           <div className="flex flex-wrap gap-1.5">
             {market.models.map((model: any) => {
