@@ -303,20 +303,18 @@ export default function FeaturedMarketHero() {
         )}
       </div>
 
-      {/* Two separate charts — NO and YES side by side */}
+      {/* Two separate charts — YES and NO side by side (matching pill order) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* NO Chart */}
+        {/* YES Chart (left, under YES pill) */}
         <div className="rounded-xl bg-zinc-900/60 border border-zinc-700/30 p-3 sm:p-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">NO Price</span>
+              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">YES Price</span>
             </div>
-            {chartData.length > 0 && (
-              <span className="text-sm font-mono font-bold text-emerald-400">
-                {(chartData[chartData.length - 1].noPrice * 100).toFixed(1)}%
-              </span>
-            )}
+            <span className="text-sm font-mono font-bold text-emerald-400">
+              {currentOdds.yes}%
+            </span>
           </div>
           {chartLoading ? (
             <div className="w-full flex items-center justify-center" style={{ height: 180 }}>
@@ -326,79 +324,9 @@ export default function FeaturedMarketHero() {
             <ResponsiveContainer width="100%" height={180}>
               <AreaChart data={chartData}>
                 <defs>
-                  <linearGradient id="noGrad" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="yesGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
                     <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatTimestamp}
-                  tick={{ fontSize: 10, fill: "#3f3f46" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  domain={[0, 1]}
-                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                  tick={{ fontSize: 10, fill: "#3f3f46" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "rgba(24,24,27,0.95)",
-                    border: "1px solid rgba(63,63,70,0.5)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                  labelFormatter={(ts: number) => formatTimestamp(ts)}
-                  formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, "NO"]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="noPrice"
-                  stroke="#34d399"
-                  strokeWidth={2}
-                  fill="url(#noGrad)"
-                  dot={false}
-                  animationDuration={1000}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 180 }}>
-              No data
-            </div>
-          )}
-        </div>
-
-        {/* YES Chart */}
-        <div className="rounded-xl bg-zinc-900/60 border border-zinc-700/30 p-3 sm:p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-violet-400" />
-              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">YES Price</span>
-            </div>
-            {chartData.length > 0 && (
-              <span className="text-sm font-mono font-bold text-violet-400">
-                {(chartData[chartData.length - 1].yesPrice * 100).toFixed(1)}%
-              </span>
-            )}
-          </div>
-          {chartLoading ? (
-            <div className="w-full flex items-center justify-center" style={{ height: 180 }}>
-              <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="yesGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#a78bfa" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis
@@ -430,9 +358,77 @@ export default function FeaturedMarketHero() {
                 <Area
                   type="monotone"
                   dataKey="yesPrice"
-                  stroke="#a78bfa"
+                  stroke="#34d399"
                   strokeWidth={2}
                   fill="url(#yesGrad)"
+                  dot={false}
+                  animationDuration={1000}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 180 }}>
+              No data
+            </div>
+          )}
+        </div>
+
+        {/* NO Chart (right, under NO pill) */}
+        <div className="rounded-xl bg-zinc-900/60 border border-zinc-700/30 p-3 sm:p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-red-400" />
+              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">NO Price</span>
+            </div>
+            <span className="text-sm font-mono font-bold text-red-400">
+              {currentOdds.no}%
+            </span>
+          </div>
+          {chartLoading ? (
+            <div className="w-full flex items-center justify-center" style={{ height: 180 }}>
+              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : chartData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="noGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#f87171" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="timestamp"
+                  tickFormatter={formatTimestamp}
+                  tick={{ fontSize: 10, fill: "#3f3f46" }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  domain={[0, 1]}
+                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
+                  tick={{ fontSize: 10, fill: "#3f3f46" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={36}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "rgba(24,24,27,0.95)",
+                    border: "1px solid rgba(63,63,70,0.5)",
+                    borderRadius: "8px",
+                    fontSize: "12px",
+                  }}
+                  labelFormatter={(ts: number) => formatTimestamp(ts)}
+                  formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, "NO"]}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="noPrice"
+                  stroke="#f87171"
+                  strokeWidth={2}
+                  fill="url(#noGrad)"
                   dot={false}
                   animationDuration={1000}
                 />
