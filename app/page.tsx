@@ -310,12 +310,12 @@ export default function HomePage() {
               <h2 className="text-3xl font-bold text-white mb-4">Markets</h2>
               <p className="text-zinc-400 mb-4">Explore prediction markets on Gensyn Testnet</p>
 
-              {/* Market 3 Countdown Timer */}
-              {MARKETS["3"]?.endTimestamp && MARKETS["3"]?.status === "active" && (
+              {/* Market 9 Countdown Timer */}
+              {MARKETS["9"]?.endTimestamp && MARKETS["9"]?.status === "active" && (
                 <div className="inline-block bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 rounded-xl px-6 py-3">
                   <CountdownTimer
-                    endTimestamp={MARKETS["3"].endTimestamp}
-                    label="Market 3 ends in"
+                    endTimestamp={MARKETS["9"].endTimestamp}
+                    label="Market 9 ends in"
                   />
                 </div>
               )}
