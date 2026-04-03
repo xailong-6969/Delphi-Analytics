@@ -4,8 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   Tooltip,
@@ -303,25 +303,56 @@ export default function FeaturedMarketHero() {
         )}
       </div>
 
-      {/* Win Probability Chart — full width, both lines */}
+      {/* Win Probability Chart — full width, gradient area style */}
       <div className="mb-6">
-        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
-          Win Probability
-        </p>
-        <div className="rounded-xl bg-zinc-800/30 border border-zinc-700/30 p-3 sm:p-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+            Win Probability
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]" />
+              <span className="text-[11px] text-zinc-400">NO</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-violet-400 shadow-[0_0_6px_rgba(167,139,250,0.5)]" />
+              <span className="text-[11px] text-zinc-400">YES</span>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-xl bg-zinc-900/60 border border-zinc-700/30 p-3 sm:p-4 backdrop-blur-sm">
           {chartLoading ? (
-            <div className="w-full flex items-center justify-center" style={{ height: 250 }}>
+            <div className="w-full flex items-center justify-center" style={{ height: 260 }}>
               <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : chartData.length > 0 ? (
             <>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={chartData}>
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="noGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#34d399" stopOpacity={0.25} />
+                      <stop offset="50%" stopColor="#34d399" stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="yesGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#a78bfa" stopOpacity={0.25} />
+                      <stop offset="50%" stopColor="#a78bfa" stopOpacity={0.08} />
+                      <stop offset="100%" stopColor="#a78bfa" stopOpacity={0} />
+                    </linearGradient>
+                    <filter id="glow">
+                      <feGaussianBlur stdDeviation="2" result="coloredBlur" />
+                      <feMerge>
+                        <feMergeNode in="coloredBlur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
                   <XAxis
                     dataKey="timestamp"
                     tickFormatter={formatTimestamp}
                     tick={{ fontSize: 11, fill: "#52525b" }}
-                    axisLine={{ stroke: "#27272a" }}
+                    axisLine={{ stroke: "#27272a", strokeWidth: 0.5 }}
                     tickLine={false}
                     interval="preserveStartEnd"
                   />
@@ -334,43 +365,36 @@ export default function FeaturedMarketHero() {
                     width={42}
                   />
                   <Tooltip content={<ChartTooltip />} />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="noPrice"
                     name="NO"
-                    stroke="#3B82F6"
-                    strokeWidth={2}
+                    stroke="#34d399"
+                    strokeWidth={2.5}
+                    fill="url(#noGradient)"
                     dot={false}
-                    animationDuration={1000}
+                    animationDuration={1200}
+                    filter="url(#glow)"
                   />
-                  <Line
+                  <Area
                     type="monotone"
                     dataKey="yesPrice"
                     name="YES"
-                    stroke="#F97316"
-                    strokeWidth={2}
+                    stroke="#a78bfa"
+                    strokeWidth={2.5}
+                    fill="url(#yesGradient)"
                     dot={false}
-                    animationDuration={1000}
+                    animationDuration={1200}
+                    filter="url(#glow)"
                   />
-                </LineChart>
+                </AreaChart>
               </ResponsiveContainer>
-              {/* Legend */}
-              <div className="flex items-center gap-5 mt-3 ml-10">
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-0.5 rounded-full bg-[#3B82F6]" />
-                  <span className="text-xs text-zinc-400 font-medium">NO</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-4 h-0.5 rounded-full bg-[#F97316]" />
-                  <span className="text-xs text-zinc-400 font-medium">YES</span>
-                </div>
-              </div>
-              <p className="text-[10px] text-zinc-600 mt-2 ml-10">
-                *Showing implied pricing for the outcomes over the last 3 days.
+              <p className="text-[10px] text-zinc-600 mt-2 text-center">
+                Implied pricing for outcomes · Last 3 days · Updates every ~1 min
               </p>
             </>
           ) : (
-            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 250 }}>
+            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 260 }}>
               No chart data
             </div>
           )}
