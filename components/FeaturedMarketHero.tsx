@@ -4,8 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  AreaChart,
-  Area,
+  LineChart,
+  Line,
   XAxis,
   YAxis,
   Tooltip,
@@ -138,10 +138,10 @@ export default function FeaturedMarketHero() {
 
     async function fetchData() {
       try {
-        // Fetch both: 1h (60s candles) for live odds, 1d (1h candles) for chart
+        // Fetch both: 1h (60s candles) for live odds, auto/3d for full chart
         const [liveRes, chartRes] = await Promise.all([
           fetch(`/api/markets/${market!.internalId}/chart?timeframe=1h`),
-          fetch(`/api/markets/${market!.internalId}/chart?timeframe=1d`),
+          fetch(`/api/markets/${market!.internalId}/chart?timeframe=auto`),
         ]);
 
         const [liveData, chartData]: [DelphiChartResponse, DelphiChartResponse] =
@@ -229,135 +229,151 @@ export default function FeaturedMarketHero() {
         </div>
       )}
 
-      {/* Main content: Odds + Chart */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Left: Odds Display */}
-        <div className="flex flex-col justify-center">
-          {isActive ? (
-            <>
-              <div className="flex items-center gap-2 mb-3">
-                <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
-                  Current Odds
-                </p>
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-[10px] text-emerald-400/80 font-medium">Updates every ~1 min</span>
-                </div>
-              </div>
-              <div className="flex gap-3 mb-4">
-                {/* YES pill */}
-                <div className="odds-pill odds-pill-yes flex-1">
-                  <span className="text-xs text-emerald-400/70 uppercase tracking-wider font-medium">
-                    Yes
-                  </span>
-                  <span className="text-3xl sm:text-4xl font-bold font-mono text-emerald-400">
-                    {currentOdds.yes}
-                    <span className="text-lg">%</span>
-                  </span>
-                </div>
-                {/* NO pill */}
-                <div className="odds-pill odds-pill-no flex-1">
-                  <span className="text-xs text-red-400/70 uppercase tracking-wider font-medium">
-                    No
-                  </span>
-                  <span className="text-3xl sm:text-4xl font-bold font-mono text-red-400">
-                    {currentOdds.no}
-                    <span className="text-lg">%</span>
-                  </span>
-                </div>
-              </div>
-
-              {/* Odds bar */}
-              <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden mb-1">
-                <motion.div
-                  className="h-full rounded-full"
-                  style={{
-                    background: `linear-gradient(90deg, #10b981 0%, #10b981 ${currentOdds.yes}%, #ef4444 ${currentOdds.yes}%, #ef4444 100%)`,
-                  }}
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ duration: 1, ease: "easeOut" }}
-                />
-              </div>
-            </>
-          ) : (
-            /* Settled market: show winner */
-            <>
-              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
-                Result
+      {/* Odds Display */}
+      <div className="mb-6">
+        {isActive ? (
+          <>
+            <div className="flex items-center gap-2 mb-3">
+              <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+                Current Odds
               </p>
-              {winnerModel && (
-                <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl">🏆</span>
-                    <div>
-                      <p className="text-xs text-amber-400/70 mb-0.5">
-                        Winning Outcome
-                      </p>
-                      <p className="text-2xl font-bold text-amber-300">
-                        {winnerModel.name}
-                      </p>
-                    </div>
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[10px] text-emerald-400/80 font-medium">Updates every ~1 min</span>
+              </div>
+            </div>
+            <div className="flex gap-3 mb-4">
+              {/* YES pill */}
+              <div className="odds-pill odds-pill-yes flex-1">
+                <span className="text-xs text-emerald-400/70 uppercase tracking-wider font-medium">
+                  Yes
+                </span>
+                <span className="text-3xl sm:text-4xl font-bold font-mono text-emerald-400">
+                  {currentOdds.yes}
+                  <span className="text-lg">%</span>
+                </span>
+              </div>
+              {/* NO pill */}
+              <div className="odds-pill odds-pill-no flex-1">
+                <span className="text-xs text-red-400/70 uppercase tracking-wider font-medium">
+                  No
+                </span>
+                <span className="text-3xl sm:text-4xl font-bold font-mono text-red-400">
+                  {currentOdds.no}
+                  <span className="text-lg">%</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Odds bar */}
+            <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{
+                  background: `linear-gradient(90deg, #10b981 0%, #10b981 ${currentOdds.yes}%, #ef4444 ${currentOdds.yes}%, #ef4444 100%)`,
+                }}
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 1, ease: "easeOut" }}
+              />
+            </div>
+          </>
+        ) : (
+          /* Settled market: show winner */
+          <>
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
+              Result
+            </p>
+            {winnerModel && (
+              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🏆</span>
+                  <div>
+                    <p className="text-xs text-amber-400/70 mb-0.5">
+                      Winning Outcome
+                    </p>
+                    <p className="text-2xl font-bold text-amber-300">
+                      {winnerModel.name}
+                    </p>
                   </div>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Right: Mini Chart */}
-        <div className="flex flex-col">
-          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
-            {isActive ? "YES Price" : "Price History"}
-          </p>
-          <div className="flex-1 min-h-[160px] rounded-xl bg-zinc-800/30 border border-zinc-700/30 p-2 sm:p-3">
-            {chartLoading ? (
-              <div className="w-full h-full flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : chartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={160}>
-                <AreaChart data={chartData}>
-                  <defs>
-                    <linearGradient id="yesGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Win Probability Chart — full width, both lines */}
+      <div className="mb-6">
+        <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
+          Win Probability
+        </p>
+        <div className="rounded-xl bg-zinc-800/30 border border-zinc-700/30 p-3 sm:p-4">
+          {chartLoading ? (
+            <div className="w-full flex items-center justify-center" style={{ height: 250 }}>
+              <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : chartData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={chartData}>
                   <XAxis
                     dataKey="timestamp"
                     tickFormatter={formatTimestamp}
-                    tick={{ fontSize: 10, fill: "#52525b" }}
-                    axisLine={false}
+                    tick={{ fontSize: 11, fill: "#52525b" }}
+                    axisLine={{ stroke: "#27272a" }}
                     tickLine={false}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     domain={[0, 1]}
                     tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                    tick={{ fontSize: 10, fill: "#52525b" }}
+                    tick={{ fontSize: 11, fill: "#52525b" }}
                     axisLine={false}
                     tickLine={false}
-                    width={40}
+                    width={42}
                   />
                   <Tooltip content={<ChartTooltip />} />
-                  <Area
+                  <Line
                     type="monotone"
-                    dataKey="yesPrice"
-                    stroke="#10b981"
+                    dataKey="noPrice"
+                    name="NO"
+                    stroke="#3B82F6"
                     strokeWidth={2}
-                    fill="url(#yesGradient)"
                     dot={false}
                     animationDuration={1000}
                   />
-                </AreaChart>
+                  <Line
+                    type="monotone"
+                    dataKey="yesPrice"
+                    name="YES"
+                    stroke="#F97316"
+                    strokeWidth={2}
+                    dot={false}
+                    animationDuration={1000}
+                  />
+                </LineChart>
               </ResponsiveContainer>
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-600 text-sm">
-                No chart data
+              {/* Legend */}
+              <div className="flex items-center gap-5 mt-3 ml-10">
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded-full bg-[#3B82F6]" />
+                  <span className="text-xs text-zinc-400 font-medium">NO</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-4 h-0.5 rounded-full bg-[#F97316]" />
+                  <span className="text-xs text-zinc-400 font-medium">YES</span>
+                </div>
               </div>
-            )}
-          </div>
+              <p className="text-[10px] text-zinc-600 mt-2 ml-10">
+                *Showing implied pricing for the outcomes over the last 3 days.
+              </p>
+            </>
+          ) : (
+            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 250 }}>
+              No chart data
+            </div>
+          )}
         </div>
       </div>
 
