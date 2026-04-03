@@ -127,8 +127,10 @@ export default function FeaturedMarketHero() {
 
         if (data.data_points) {
           const points: ChartDataPoint[] = data.data_points.map((dp) => {
-            const noEntry = dp.entries.find((e) => e.entry_idx === "0");
-            const yesEntry = dp.entries.find((e) => e.entry_idx === "1");
+            // Chart API: entry_idx "0" = YES, entry_idx "1" = NO
+            // (reversed from market config where idx 0 = NO, idx 1 = YES)
+            const yesEntry = dp.entries.find((e) => e.entry_idx === "0");
+            const noEntry = dp.entries.find((e) => e.entry_idx === "1");
             return {
               timestamp: dp.timestamp,
               yesPrice: parseFloat(yesEntry?.price || "0.5"),
