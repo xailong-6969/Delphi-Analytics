@@ -100,10 +100,52 @@ export const MARKETS: Record<string, MarketConfig> = {
     internalId: "6",
     displayId: "6",
     title: "Will Timothee Chalamet Win Best Actor At The Oscars On Sunday, March 15th?",
-    status: "active",
+    status: "settled",
     type: "outcome",
+    winnerIdx: 1,  // YES won
     endDate: "Mar 16",
     endTimestamp: "2026-03-16T08:41:00Z",
+    models: [
+      { idx: 0, name: "NO", family: "OUTCOME" },
+      { idx: 1, name: "YES", family: "OUTCOME" },
+    ],
+  },
+  "7": {
+    internalId: "7",
+    displayId: "7",
+    title: "Will All Four #1 Seeds Survive The First Round Of March Madness?",
+    status: "settled",
+    type: "outcome",
+    winnerIdx: 1,  // YES won
+    endDate: "Mar 23",
+    endTimestamp: "2026-03-23T21:25:00Z",
+    models: [
+      { idx: 0, name: "NO", family: "OUTCOME" },
+      { idx: 1, name: "YES", family: "OUTCOME" },
+    ],
+  },
+  "8": {
+    internalId: "8",
+    displayId: "8",
+    title: "Will Bitcoin Price Be Above $75,000 On Sunday, March 29, 2026 At 11:59:59 PM UTC?",
+    status: "settled",
+    type: "outcome",
+    winnerIdx: 0,  // NO won
+    endDate: "Mar 30",
+    endTimestamp: "2026-03-30T22:37:00Z",
+    models: [
+      { idx: 0, name: "NO", family: "OUTCOME" },
+      { idx: 1, name: "YES", family: "OUTCOME" },
+    ],
+  },
+  "9": {
+    internalId: "9",
+    displayId: "9",
+    title: "Will Brent Crude Close Above $110 As Of Market Close (18:30 UTC) On Friday, April 3, 2026?",
+    status: "active",
+    type: "outcome",
+    endDate: "Apr 6",
+    endTimestamp: "2026-04-06T22:43:00Z",
     models: [
       { idx: 0, name: "NO", family: "OUTCOME" },
       { idx: 1, name: "YES", family: "OUTCOME" },
@@ -112,8 +154,8 @@ export const MARKETS: Record<string, MarketConfig> = {
 };
 
 // Valid internal market IDs
-export const VALID_MARKET_IDS = ["0", "1", "3", "4", "5", "6"];
-export const VALID_MARKET_IDS_BIGINT = [0n, 1n, 3n, 4n, 5n, 6n];
+export const VALID_MARKET_IDS = ["0", "1", "3", "4", "5", "6", "7", "8", "9"];
+export const VALID_MARKET_IDS_BIGINT = [0n, 1n, 3n, 4n, 5n, 6n, 7n, 8n, 9n];
 
 // Get market config by internal ID
 export function getMarketConfig(internalId: string): MarketConfig | null {
@@ -145,6 +187,9 @@ export const MARKET_WINNERS: Record<string, number> = {
   "3": 1,  // Qwen/Qwen3-8B won
   "4": 3,  // grok-4.1-fast-reasoning won
   "5": 0,  // NO won (Trump/Anthropic ban market)
+  "6": 1,  // YES won (Chalamet Best Actor)
+  "7": 1,  // YES won (March Madness #1 seeds survived)
+  "8": 0,  // NO won (Bitcoin not above $75K)
 };
 
 // Check if a market has ended based on endTimestamp
