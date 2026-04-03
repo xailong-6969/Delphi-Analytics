@@ -98,6 +98,7 @@ function ChartTooltip({ active, payload }: CustomTooltipProps) {
 
 export default function FeaturedMarketHero() {
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [liveOdds, setLiveOdds] = useState<{ yes: number; no: number } | null>(null);
   const [chartLoading, setChartLoading] = useState(true);
 
   const activeMarket = useMemo(() => getActiveMarket(), []);
@@ -105,50 +106,70 @@ export default function FeaturedMarketHero() {
   const market = activeMarket || fallbackMarket;
   const isActive = !!activeMarket;
 
-  // Current odds from chart data
+  // Current odds from live data (1h endpoint with 60s candles)
   const currentOdds = useMemo(() => {
+    if (liveOdds) return liveOdds;
     if (chartData.length === 0) return { yes: 50, no: 50 };
     const latest = chartData[chartData.length - 1];
     return {
       yes: Math.round(latest.yesPrice * 1000) / 10,
       no: Math.round(latest.noPrice * 1000) / 10,
     };
-  }, [chartData]);
+  }, [liveOdds, chartData]);
+
+  function parseChartPoints(data: DelphiChartResponse): ChartDataPoint[] {
+    if (!data.data_points) return [];
+    return data.data_points.map((dp) => {
+      // Chart API: entry_idx "0" = YES, entry_idx "1" = NO
+      // (reversed from market config where idx 0 = NO, idx 1 = YES)
+      const yesEntry = dp.entries.find((e) => e.entry_idx === "0");
+      const noEntry = dp.entries.find((e) => e.entry_idx === "1");
+      return {
+        timestamp: dp.timestamp,
+        yesPrice: parseFloat(yesEntry?.price || "0.5"),
+        noPrice: parseFloat(noEntry?.price || "0.5"),
+        label: formatTimestamp(dp.timestamp),
+      };
+    });
+  }
 
   useEffect(() => {
     if (!market) return;
 
-    async function fetchChart() {
+    async function fetchData() {
       try {
-        const res = await fetch(
-          `/api/markets/${market!.internalId}/chart?timeframe=auto`
-        );
-        const data: DelphiChartResponse = await res.json();
+        // Fetch both: 1h (60s candles) for live odds, 1d (1h candles) for chart
+        const [liveRes, chartRes] = await Promise.all([
+          fetch(`/api/markets/${market!.internalId}/chart?timeframe=1h`),
+          fetch(`/api/markets/${market!.internalId}/chart?timeframe=1d`),
+        ]);
 
-        if (data.data_points) {
-          const points: ChartDataPoint[] = data.data_points.map((dp) => {
-            // Chart API: entry_idx "0" = YES, entry_idx "1" = NO
-            // (reversed from market config where idx 0 = NO, idx 1 = YES)
-            const yesEntry = dp.entries.find((e) => e.entry_idx === "0");
-            const noEntry = dp.entries.find((e) => e.entry_idx === "1");
-            return {
-              timestamp: dp.timestamp,
-              yesPrice: parseFloat(yesEntry?.price || "0.5"),
-              noPrice: parseFloat(noEntry?.price || "0.5"),
-              label: formatTimestamp(dp.timestamp),
-            };
+        const [liveData, chartData]: [DelphiChartResponse, DelphiChartResponse] =
+          await Promise.all([liveRes.json(), chartRes.json()]);
+
+        // Live odds from the latest 60s candle
+        if (liveData.data_points?.length) {
+          const latest = liveData.data_points[liveData.data_points.length - 1];
+          const yesEntry = latest.entries.find((e) => e.entry_idx === "0");
+          const noEntry = latest.entries.find((e) => e.entry_idx === "1");
+          setLiveOdds({
+            yes: Math.round(parseFloat(yesEntry?.price || "0.5") * 1000) / 10,
+            no: Math.round(parseFloat(noEntry?.price || "0.5") * 1000) / 10,
           });
-          setChartData(points);
         }
+
+        // Chart data from 1d (hourly candles)
+        const points = parseChartPoints(chartData);
+        if (points.length) setChartData(points);
       } catch (e) {
-        console.error("Failed to fetch chart data:", e);
+        console.error("Failed to fetch market data:", e);
       } finally {
         setChartLoading(false);
       }
     }
 
-    fetchChart();
-    const interval = setInterval(fetchChart, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [market]);
 
@@ -214,9 +235,15 @@ export default function FeaturedMarketHero() {
         <div className="flex flex-col justify-center">
           {isActive ? (
             <>
-              <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
-                Current Odds
-              </p>
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
+                  Current Odds
+                </p>
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] text-emerald-400/80 font-medium">Updates every ~1 min</span>
+                </div>
+              </div>
               <div className="flex gap-3 mb-4">
                 {/* YES pill */}
                 <div className="odds-pill odds-pill-yes flex-1">
