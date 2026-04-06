@@ -2,6 +2,8 @@ import "./globals.css";
 import { Metadata } from "next";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import PageTransitionProvider from "@/components/PageTransitionProvider";
+import LiveTicker from "@/components/LiveTicker";
 
 export const metadata: Metadata = {
   title: "Delphi Analytics | Gensyn Testnet",
@@ -20,7 +22,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body className="min-h-screen flex flex-col antialiased">
         <Header />
-        <main className="flex-1">{children}</main>
+        <LiveTicker />
+        <main className="flex-1">
+          <PageTransitionProvider>{children}</PageTransitionProvider>
+        </main>
         <Footer />
       </body>
     </html>
