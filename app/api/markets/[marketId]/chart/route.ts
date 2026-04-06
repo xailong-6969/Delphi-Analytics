@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { VALID_MARKET_IDS, normalizeMarketId } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -11,9 +12,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { marketId: string } }
 ) {
-  const { marketId } = params;
+  const marketId = normalizeMarketId(params.marketId);
   const { searchParams } = new URL(request.url);
   const timeframe = searchParams.get("timeframe") || "auto";
+
+  if (!VALID_MARKET_IDS.includes(marketId)) {
+    return NextResponse.json({ error: "Invalid market ID" }, { status: 400 });
+  }
 
   const cacheKey = `${marketId}-${timeframe}`;
 

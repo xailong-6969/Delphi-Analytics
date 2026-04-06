@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAddress } from "viem";
+import { VALID_MARKET_IDS_BIGINT } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -23,20 +24,31 @@ export async function GET(
   try {
     const address = getAddress(rawAddress);
     const url = new URL(req.url);
-    const take = Math.min(Number(url.searchParams.get("take") || 50), 200);
+    const takeParam = url.searchParams.get("take");
+    const fetchAll = takeParam === "all";
+    const parsedTake = takeParam ? Number(takeParam) : 50;
+    const take = fetchAll
+      ? undefined
+      : Math.min(
+          Math.max(Number.isFinite(parsedTake) ? parsedTake : 50, 1),
+          200
+        );
     const skip = Number(url.searchParams.get("skip") || 0);
     const marketId = url.searchParams.get("marketId");
+    const trackedOnly = url.searchParams.get("trackedOnly") === "1";
 
     const where: any = { trader: address };
     if (marketId) {
       where.marketId = BigInt(marketId);
+    } else if (trackedOnly) {
+      where.marketId = { in: VALID_MARKET_IDS_BIGINT };
     }
 
     const [trades, total] = await Promise.all([
       prisma.trade.findMany({
         where,
         orderBy: { blockTime: "desc" },
-        take,
+        ...(take !== undefined ? { take } : {}),
         skip,
         select: {
           id: true,
@@ -76,7 +88,7 @@ export async function GET(
         impliedProbability: t.impliedProbability,
       })),
       total,
-      take,
+      take: take ?? total,
       skip,
     });
   } catch (e) {

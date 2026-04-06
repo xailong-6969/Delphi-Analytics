@@ -25,7 +25,7 @@ export default function ParticleBackground() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        const colors = ["#8B5CF6", "#6366F1", "#3B82F6", "#14B8A6", "#10B981"];
+        const colors = ["#8B5CF6", "#6366F1", "#3B82F6", "#22D3EE", "#10B981"];
 
         const resize = () => {
             canvas.width = window.innerWidth;
@@ -33,7 +33,7 @@ export default function ParticleBackground() {
         };
 
         const createParticles = () => {
-            const count = Math.min(80, Math.floor(window.innerWidth / 15));
+            const count = Math.min(56, Math.floor(window.innerWidth / 26));
             particlesRef.current = [];
 
             for (let i = 0; i < count; i++) {
@@ -125,19 +125,21 @@ export default function ParticleBackground() {
             mouseRef.current = { x: e.clientX, y: e.clientY };
         };
 
+        const handleResize = () => {
+            resize();
+            createParticles();
+        };
+
         resize();
         createParticles();
         animate();
 
-        window.addEventListener("resize", () => {
-            resize();
-            createParticles();
-        });
+        window.addEventListener("resize", handleResize);
         window.addEventListener("mousemove", handleMouseMove);
 
         return () => {
             cancelAnimationFrame(animationRef.current);
-            window.removeEventListener("resize", resize);
+            window.removeEventListener("resize", handleResize);
             window.removeEventListener("mousemove", handleMouseMove);
         };
     }, []);
@@ -145,8 +147,8 @@ export default function ParticleBackground() {
     return (
         <canvas
             ref={canvasRef}
-            className="fixed inset-0 pointer-events-none z-0"
-            style={{ background: "transparent" }}
+            className="absolute inset-0 pointer-events-none"
+            style={{ background: "transparent", opacity: 0.65 }}
         />
     );
 }

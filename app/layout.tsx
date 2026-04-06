@@ -4,6 +4,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PageTransitionProvider from "@/components/PageTransitionProvider";
 import LiveTicker from "@/components/LiveTicker";
+import ParticleBackground from "@/components/ParticleBackground";
 
 export const metadata: Metadata = {
   title: "Delphi Analytics | Gensyn Testnet",
@@ -20,13 +21,24 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen flex flex-col antialiased">
-        <Header />
-        <LiveTicker />
-        <main className="flex-1">
-          <PageTransitionProvider>{children}</PageTransitionProvider>
-        </main>
-        <Footer />
+      <body className="min-h-screen overflow-x-hidden antialiased">
+        <div className="app-background" aria-hidden="true">
+          <div className="app-background-aurora app-background-aurora-violet" />
+          <div className="app-background-aurora app-background-aurora-cyan" />
+          <div className="app-background-aurora app-background-aurora-emerald" />
+          <div className="app-background-grid" />
+          <div className="app-background-vignette" />
+          <ParticleBackground />
+        </div>
+
+        <div className="relative z-10 flex min-h-screen flex-col">
+          <Header />
+          <LiveTicker />
+          <main className="relative z-10 flex-1">
+            <PageTransitionProvider>{children}</PageTransitionProvider>
+          </main>
+          <Footer />
+        </div>
       </body>
     </html>
   );

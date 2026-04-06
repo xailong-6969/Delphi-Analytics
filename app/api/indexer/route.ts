@@ -5,17 +5,32 @@ import { runIndexer, recalculateTraderStats, updateMarketVolumes } from "@/lib/i
 export const dynamic = "force-dynamic";
 export const maxDuration = 60; // 60 seconds max for Vercel/Railway
 
-// Secret key for triggering indexer (set in env)
-const INDEXER_SECRET = process.env.INDEXER_SECRET || "default-secret-change-me";
+function authorizeIndexerRequest(secret: string | null) {
+  const configuredSecret = process.env.INDEXER_SECRET?.trim();
+
+  if (!configuredSecret) {
+    console.error("INDEXER_SECRET is not configured");
+    return NextResponse.json(
+      { error: "Indexer secret not configured" },
+      { status: 503 }
+    );
+  }
+
+  if (!secret || secret !== configuredSecret) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  return null;
+}
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const secret = url.searchParams.get("secret");
   const action = url.searchParams.get("action") || "index";
 
-  // Check authorization
-  if (secret !== INDEXER_SECRET) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authError = authorizeIndexerRequest(secret);
+  if (authError) {
+    return authError;
   }
 
   try {
@@ -111,8 +126,9 @@ export async function POST(req: Request) {
     const body = await req.json().catch(() => ({}));
     const secret = body.secret || req.headers.get("x-indexer-secret");
 
-    if (secret !== INDEXER_SECRET) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authError = authorizeIndexerRequest(secret);
+    if (authError) {
+      return authError;
     }
 
     const result = await runIndexer(prisma, { batchSize: 50 });

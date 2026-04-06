@@ -2,18 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
-import { formatNumber, formatTokens, formatAddress, formatTimeAgo } from "@/lib/utils";
+import { formatAddress, formatNumber, formatTimeAgo, formatTokens } from "@/lib/utils";
 import { MARKETS, MarketConfig } from "@/lib/markets-config";
 import FeaturedMarketHero from "@/components/FeaturedMarketHero";
-import ScrollReveal from "@/components/ScrollReveal";
-
-// Lazy load ParticleBackground for faster initial page load
-const ParticleBackground = dynamic(
-  () => import("@/components/ParticleBackground"),
-  { ssr: false, loading: () => null }
-);
+import ScrollReveal, {
+  StaggerContainer,
+  StaggerItem,
+} from "@/components/ScrollReveal";
 
 interface HomeData {
   totalTrades: number;
@@ -37,6 +33,68 @@ interface HomeData {
   }>;
 }
 
+function renderFeatureIcon(kind: "pulse" | "wallet" | "archive" | "chain") {
+  const sharedProps = {
+    className: "w-5 h-5",
+    fill: "none",
+    stroke: "currentColor",
+    viewBox: "0 0 24 24",
+  };
+
+  switch (kind) {
+    case "pulse":
+      return (
+        <svg {...sharedProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M4 13h3l2-5 4 10 2-5h5"
+          />
+        </svg>
+      );
+    case "wallet":
+      return (
+        <svg {...sharedProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M3 7.5A2.5 2.5 0 015.5 5h11A2.5 2.5 0 0119 7.5V9h-3a2 2 0 000 4h3v1.5A2.5 2.5 0 0116.5 17h-11A2.5 2.5 0 013 14.5v-7z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M19 9h1.5A1.5 1.5 0 0122 10.5v1A1.5 1.5 0 0120.5 13H19"
+          />
+        </svg>
+      );
+    case "archive":
+      return (
+        <svg {...sharedProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M5 8.5h14M7 5h10a1 1 0 011 1v3H6V6a1 1 0 011-1zm-1 4h12v8a2 2 0 01-2 2H8a2 2 0 01-2-2V9zm4 3h4"
+          />
+        </svg>
+      );
+    case "chain":
+      return (
+        <svg {...sharedProps}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.8}
+            d="M10 14l-2 2a3 3 0 104.243 4.243l2-2M14 10l2-2A3 3 0 0011.757 3.757l-2 2M9 15l6-6"
+          />
+        </svg>
+      );
+  }
+}
+
 export default function HomePage() {
   const [data, setData] = useState<HomeData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,15 +107,16 @@ export default function HomePage() {
         if (!json.error) {
           setData(json);
         }
-      } catch (e) {
-        console.error("Failed to fetch stats:", e);
+      } catch (error) {
+        console.error("Failed to fetch stats:", error);
       } finally {
         setLoading(false);
       }
     }
+
     fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(fetchData, 30000);
+    return () => window.clearInterval(interval);
   }, []);
 
   const getDisplayMarketId = (internalId: string): string => {
@@ -65,382 +124,469 @@ export default function HomePage() {
     return config?.displayId || internalId;
   };
 
+  const sortedMarkets = (Object.entries(MARKETS) as [string, MarketConfig][])
+    .sort((a, b) => Number(b[1].displayId) - Number(a[1].displayId));
+
+  const heroProofCards = [
+    {
+      label: "24H volume",
+      value: data ? formatNumber(Number(data.volume24h || 0) / 1e18) : "0",
+      caption: `${(data?.trades24h ?? 0).toLocaleString()} trades`,
+      accent: "accent-emerald",
+    },
+    {
+      label: "Tracked wallets",
+      value: formatNumber(data?.uniqueTraders ?? 0, 0),
+      caption: "Live participant map",
+      accent: "accent-cyan",
+    },
+    {
+      label: "Active markets",
+      value: String(data?.activeMarkets ?? 0),
+      caption: "Current Delphi flow",
+      accent: "accent-gold",
+    },
+  ];
+
+  const signalCards = [
+    {
+      label: "24H Volume",
+      value: data ? formatNumber(Number(data.volume24h || 0) / 1e18) : "0",
+      caption: `${(data?.trades24h ?? 0).toLocaleString()} trades in the last day`,
+      accent: "accent-emerald",
+    },
+    {
+      label: "Unique Traders",
+      value: formatNumber(data?.uniqueTraders ?? 0, 0),
+      caption: `${formatNumber(data?.totalTrades ?? 0, 0)} total indexed trades`,
+      accent: "accent-cyan",
+    },
+    {
+      label: "Active Markets",
+      value: String(data?.activeMarkets ?? 0),
+      caption: "Open Delphi opportunities",
+      accent: "accent-blue",
+    },
+    {
+      label: "Settled Archive",
+      value: String(data?.settledMarkets ?? 0),
+      caption: "Resolved benchmark rounds and outcomes",
+      accent: "accent-violet",
+    },
+    {
+      label: "All-Time Volume",
+      value: data ? formatNumber(Number(data.totalVolume || 0) / 1e18) : "0",
+      caption: "Total TEST routed through the exchange",
+      accent: "accent-gold",
+    },
+    {
+      label: "Indexer Freshness",
+      value: data?.lastIndexedAt ? formatTimeAgo(data.lastIndexedAt) : "Waiting",
+      caption: data?.lastIndexedBlock
+        ? `Last block ${data.lastIndexedBlock}`
+        : "Awaiting first sync",
+      accent: "accent-ice",
+    },
+  ];
+
+  const featureCards = [
+    {
+      kind: "pulse" as const,
+      title: "Live Conviction Tracking",
+      description:
+        "See how probability shifts in real time instead of staring at static market cards.",
+    },
+    {
+      kind: "wallet" as const,
+      title: "Wallet Intelligence",
+      description:
+        "Jump from leaderboard ranks to address-level trade history and P&L in one flow.",
+    },
+    {
+      kind: "archive" as const,
+      title: "Benchmark Archive",
+      description:
+        "Compare resolved model markets and outcome markets with cleaner context and richer hierarchy.",
+    },
+    {
+      kind: "chain" as const,
+      title: "On-Chain Transparency",
+      description:
+        "Every stat is grounded in indexed Gensyn activity, not hand-curated screenshots or guesses.",
+    },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <ParticleBackground />
+      <div className="page-shell mx-auto flex min-h-[70vh] max-w-7xl items-center justify-center px-4 py-8">
         <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center z-10"
+          initial={{ opacity: 0, scale: 0.96, y: 18 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+          className="home-loading-panel"
         >
-          <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-zinc-400">Loading Delphi Analytics...</p>
+          <div className="home-loading-ring" />
+          <p className="mt-5 text-sm uppercase tracking-[0.18em] text-zinc-500">
+            Loading Delphi intelligence
+          </p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <>
-      <ParticleBackground />
+    <div className="page-shell mx-auto max-w-7xl px-4 py-8 space-y-10">
+      <section className="home-command-hero">
+        <motion.div
+          className="home-command-copy"
+          initial={{ opacity: 0, y: 28, filter: "blur(8px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <span className="home-signal-badge">Delphi Intelligence Layer</span>
+          <p className="home-command-kicker">
+            A premium command center for Gensyn prediction market signal.
+          </p>
+          <h1 className="home-command-title">
+            Trade conviction, wallet behavior, and resolution history in one
+            <span className="gradient-text-luxury"> cinematic dashboard.</span>
+          </h1>
+          <p className="home-command-description">
+            Delphi Analytics turns live Gensyn testnet data into a sharper market interface:
+            high-signal market views, ranked trader intelligence, and a branded landing
+            experience that feels closer to a premium terminal than a plain stats page.
+          </p>
 
-      <div className="relative z-10 mx-auto max-w-6xl px-4 py-8 space-y-8">
-        {/* FEATURED MARKET HERO */}
-        <ScrollReveal>
-          <section id="featured-market">
-            <FeaturedMarketHero />
-          </section>
-        </ScrollReveal>
+          <div className="home-command-actions">
+            <Link href="/markets" className="premium-button-primary">
+              Explore Markets
+            </Link>
+            <Link href="/leaderboard" className="premium-button-secondary">
+              View Leaderboard
+            </Link>
+            <a
+              href="https://delphi.gensyn.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="premium-button-ghost"
+            >
+              Trade on Delphi
+            </a>
+          </div>
 
-        {/* COMBINED STATS BAR */}
-        {data && (
-          <ScrollReveal delay={0.1}>
-            <div className="stats-bar grid-lines grid-nodes grid-cols-2 sm:grid-cols-3 lg:grid-cols-5" style={{ display: 'grid' }}>
-              {[
-                {
-                  label: "24h Volume",
-                  value: formatNumber(Number(data.volume24h || 0) / 1e18),
-                  sub: `${(data.trades24h ?? 0).toLocaleString()} trades`,
-                  color: "text-emerald-400",
-                },
-                {
-                  label: "Active Markets",
-                  value: data.activeMarkets ?? 0,
-                  sub: `${data.settledMarkets ?? 0} settled`,
-                  color: "text-blue-400",
-                },
-                {
-                  label: "Unique Traders",
-                  value: formatNumber(data.uniqueTraders ?? 0, 0),
-                  sub: `${formatNumber(data.totalTrades ?? 0, 0)} total trades`,
-                  color: "text-purple-400",
-                },
-                {
-                  label: "Total Volume",
-                  value: formatNumber(Number(data.totalVolume || 0) / 1e18),
-                  sub: "$TEST all-time",
-                  color: "text-cyan-400",
-                },
-                {
-                  label: "Total Markets",
-                  value: (data.activeMarkets ?? 0) + (data.settledMarkets ?? 0),
-                  sub: "prediction markets",
-                  color: "text-violet-400",
-                },
-              ].map((stat) => (
-                <div key={stat.label} className="stats-bar-item">
-                  <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium mb-1">
-                    {stat.label}
-                  </p>
-                  <p className={`text-xl sm:text-2xl font-bold font-mono ${stat.color}`}>
-                    {stat.value}
-                  </p>
-                  <p className="text-xs text-zinc-600 mt-0.5">{stat.sub}</p>
-                </div>
-              ))}
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* RECENT TRADES */}
-        {data?.recentTrades && data.recentTrades.length > 0 && (
-          <ScrollReveal delay={0.2}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-white">Recent Trades</h2>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-xs text-zinc-500">Live</span>
-                </div>
-              </div>
-              <Link
-                href="/markets"
-                className="text-sm text-zinc-500 hover:text-violet-400 transition-colors"
-              >
-                View all markets →
-              </Link>
-            </div>
-
-            <div className="card overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[400px] sm:min-w-0">
-                  <thead>
-                    <tr className="text-left text-xs text-zinc-500 border-b border-[var(--border-color)]">
-                      <th className="px-3 sm:px-4 py-3 font-medium">Type</th>
-                      <th className="px-3 sm:px-4 py-3 font-medium">Trader</th>
-                      <th className="px-3 sm:px-4 py-3 font-medium">Market</th>
-                      <th className="px-3 sm:px-4 py-3 font-medium text-right">Amount</th>
-                      <th className="px-3 sm:px-4 py-3 font-medium text-right hidden sm:table-cell">Price</th>
-                      <th className="px-3 sm:px-4 py-3 font-medium text-right hidden md:table-cell">Time</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.recentTrades.slice(0, 8).map((trade, idx) => {
-                      const internalId = trade.marketId.toString();
-                      const displayId = getDisplayMarketId(internalId);
-                      return (
-                        <motion.tr
-                          key={trade.id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="table-row border-b border-[var(--border-color)] last:border-0"
-                        >
-                          <td className="px-3 sm:px-4 py-3">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                                trade.isBuy
-                                  ? "bg-emerald-500/10 text-emerald-400"
-                                  : "bg-red-500/10 text-red-400"
-                              }`}
-                            >
-                              {trade.isBuy ? "BUY" : "SELL"}
-                            </span>
-                          </td>
-                          <td className="px-3 sm:px-4 py-3">
-                            <Link
-                              href={`/address/${trade.trader}`}
-                              className="font-mono text-xs sm:text-sm text-zinc-300 hover:text-blue-400 transition-colors"
-                            >
-                              {formatAddress(trade.trader, 4)}
-                            </Link>
-                          </td>
-                          <td className="px-3 sm:px-4 py-3">
-                            <Link
-                              href={`/markets/${internalId}`}
-                              className="text-xs sm:text-sm text-zinc-300 hover:text-blue-400 whitespace-nowrap"
-                            >
-                              Market #{displayId}
-                            </Link>
-                          </td>
-                          <td className="px-3 sm:px-4 py-3 text-right">
-                            <span className="font-mono text-xs sm:text-sm text-white">
-                              {formatTokens(trade.tokensDelta)}
-                            </span>
-                          </td>
-                          <td className="px-3 sm:px-4 py-3 text-right hidden sm:table-cell">
-                            <span className="font-mono text-sm text-zinc-400">
-                              {trade.impliedProbability?.toFixed(1) || "0"}%
-                            </span>
-                          </td>
-                          <td className="px-3 sm:px-4 py-3 text-right hidden md:table-cell">
-                            <span className="text-xs text-zinc-500">
-                              {formatTimeAgo(trade.blockTime)}
-                            </span>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Indexer Status */}
-            <div className="mt-4 text-center">
-              <p className="text-xs text-zinc-600">
-                Last indexed block:{" "}
-                <span className="font-mono text-zinc-500">{data?.lastIndexedBlock}</span>
-                {data?.lastIndexedAt && (
-                  <span className="ml-2">• Updated {formatTimeAgo(data.lastIndexedAt)}</span>
-                )}
-              </p>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* ALWAYS-VISIBLE PLATFORM STATS */}
-        <ScrollReveal delay={0.1}>
-          <div className="stats-bar grid-lines grid-nodes" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)' }}>
+          <div className="home-insight-row">
             {[
-              {
-                label: "Total Markets",
-                value: Object.keys(MARKETS).length.toString(),
-                color: "#8b5cf6",
-              },
-              {
-                label: "Active Markets",
-                value: (Object.values(MARKETS) as MarketConfig[]).filter(m => m.status === "active").length.toString(),
-                color: "#10b981",
-              },
-              {
-                label: "Settled Markets",
-                value: (Object.values(MARKETS) as MarketConfig[]).filter(m => m.status === "settled").length.toString(),
-                color: "#3b82f6",
-              },
-              {
-                label: "Network",
-                value: "Gensyn",
-                color: "#06b6d4",
-              },
-            ].map((stat, i) => (
-              <div key={i} className="stats-bar-item">
-                <div className="text-xs uppercase tracking-wider text-zinc-500 mb-1">{stat.label}</div>
-                <div className="text-xl font-bold font-mono" style={{ color: stat.color }}>{stat.value}</div>
-              </div>
+              "Live market pulse",
+              "Wallet P&L intelligence",
+              "Resolved market archive",
+            ].map((item) => (
+              <span key={item} className="home-insight-chip">
+                {item}
+              </span>
             ))}
           </div>
-        </ScrollReveal>
 
-        {/* ALL MARKETS OVERVIEW */}
-        <ScrollReveal delay={0.15}>
-          <section>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-xl font-bold text-white">All Markets</h2>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-medium">
-                  {Object.keys(MARKETS).length} markets
-                </span>
+          <StaggerContainer className="home-proof-grid" staggerDelay={0.1}>
+            {heroProofCards.map((card) => (
+              <StaggerItem key={card.label}>
+                <div className={`home-proof-card ${card.accent}`}>
+                  <p className="home-proof-label">{card.label}</p>
+                  <p className="home-proof-value">{card.value}</p>
+                  <p className="home-proof-caption">{card.caption}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </motion.div>
+
+        <motion.div
+          className="home-command-stage"
+          initial={{ opacity: 0, y: 34, filter: "blur(8px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.8, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="home-stage-frame">
+            <div className="home-stage-orbit orbit-one" aria-hidden="true" />
+            <div className="home-stage-orbit orbit-two" aria-hidden="true" />
+            <div className="home-stage-tag">
+              <span className="home-stage-tag-label">Flagship View</span>
+              <span className="home-stage-tag-value">Featured market intelligence</span>
+            </div>
+            <FeaturedMarketHero />
+          </div>
+        </motion.div>
+      </section>
+
+      <ScrollReveal duration={0.8} distance={34}>
+        <section className="section-panel home-signal-section">
+          <div className="section-panel-header">
+            <div className="section-panel-copy">
+              <span className="page-eyebrow">Signal Snapshot</span>
+              <h2 className="mt-4 text-2xl font-semibold text-white">
+                The market in one quick read
+              </h2>
+              <p>
+                A tighter command-strip for volume, participation, archive depth, and indexer
+                freshness.
+              </p>
+            </div>
+          </div>
+
+          <StaggerContainer className="home-signal-grid" staggerDelay={0.08}>
+            {signalCards.map((card) => (
+              <StaggerItem key={card.label}>
+                <div className={`home-signal-card ${card.accent}`}>
+                  <p className="home-signal-label">{card.label}</p>
+                  <p className="home-signal-value">{card.value}</p>
+                  <p className="home-signal-caption">{card.caption}</p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </section>
+      </ScrollReveal>
+
+      {data?.recentTrades && data.recentTrades.length > 0 && (
+        <ScrollReveal duration={0.78} distance={30}>
+          <section className="section-panel overflow-hidden">
+            <div className="section-panel-header">
+              <div className="section-panel-copy">
+                <span className="page-eyebrow">Flow Monitor</span>
+                <h2 className="mt-4 text-2xl font-semibold text-white">Recent trades</h2>
+                <p>The latest wallet activity across tracked Delphi markets.</p>
               </div>
-              <Link href="/markets" className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1">
-                View all
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
+              <div className="flex items-center gap-3">
+                <div className="home-live-pill">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Live feed</span>
+                </div>
+                <Link href="/markets" className="text-sm text-zinc-400 hover:text-white transition-colors">
+                  View all markets
+                </Link>
+              </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(Object.entries(MARKETS) as [string, typeof MARKETS[string]][]).map(([id, market], idx) => (
-                <ScrollReveal key={id} delay={0.05 * idx}>
-                  <Link
-                    href={`/markets/market-${market.internalId}`}
-                    className="card card-shimmer p-5 block group"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xs font-mono text-zinc-500">#{market.displayId}</span>
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[620px]">
+                <thead>
+                  <tr className="text-left text-xs text-zinc-500 border-b border-[var(--border-color)]">
+                    <th className="px-4 py-3 font-medium">Type</th>
+                    <th className="px-4 py-3 font-medium">Trader</th>
+                    <th className="px-4 py-3 font-medium">Market</th>
+                    <th className="px-4 py-3 font-medium text-right">Amount</th>
+                    <th className="px-4 py-3 font-medium text-right">Price</th>
+                    <th className="px-4 py-3 font-medium text-right">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.recentTrades.slice(0, 8).map((trade, idx) => {
+                    const internalId = trade.marketId.toString();
+                    const displayId = getDisplayMarketId(internalId);
+
+                    return (
+                      <motion.tr
+                        key={trade.id}
+                        initial={{ opacity: 0, x: -18, filter: "blur(4px)" }}
+                        animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                        transition={{
+                          delay: 0.06 * idx,
+                          duration: 0.45,
+                          ease: [0.22, 1, 0.36, 1],
+                        }}
+                        className="table-row border-b border-[var(--border-color)] last:border-0"
+                      >
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              trade.isBuy
+                                ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/20"
+                                : "bg-rose-500/10 text-rose-300 border border-rose-500/20"
+                            }`}
+                          >
+                            {trade.isBuy ? "BUY" : "SELL"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/address/${trade.trader}`}
+                            className="font-mono text-sm text-zinc-300 hover:text-cyan-300 transition-colors"
+                          >
+                            {formatAddress(trade.trader, 4)}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Link
+                            href={`/markets/${internalId}`}
+                            className="text-sm text-zinc-300 hover:text-white transition-colors"
+                          >
+                            Market #{displayId}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-mono text-sm text-white">
+                            {formatTokens(trade.tokensDelta)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="font-mono text-sm text-zinc-400">
+                            {trade.impliedProbability?.toFixed(1) || "0"}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span className="text-xs text-zinc-500">
+                            {formatTimeAgo(trade.blockTime)}
+                          </span>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/6 pt-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-zinc-500">
+                Index status
+              </p>
+              <p className="text-xs text-zinc-500">
+                Last indexed block{" "}
+                <span className="font-mono text-zinc-300">{data.lastIndexedBlock}</span>
+                {data.lastIndexedAt ? (
+                  <span className="ml-2">Updated {formatTimeAgo(data.lastIndexedAt)}</span>
+                ) : null}
+              </p>
+            </div>
+          </section>
+        </ScrollReveal>
+      )}
+
+      <ScrollReveal duration={0.8} distance={30}>
+        <section className="section-panel">
+          <div className="section-panel-header">
+            <div className="section-panel-copy">
+              <span className="page-eyebrow">Market Atlas</span>
+              <h2 className="mt-4 text-2xl font-semibold text-white">All markets at a glance</h2>
+              <p>
+                A cleaner browse view for live opportunities, settled rounds, and benchmark
+                archives.
+              </p>
+            </div>
+            <span className="hero-meta-pill">{sortedMarkets.length} tracked markets</span>
+          </div>
+
+          <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4" staggerDelay={0.06}>
+            {sortedMarkets.map(([id, market]) => (
+              <StaggerItem key={id}>
+                <Link href={`/markets/${market.internalId}`} className="card market-preview-card p-5 block">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">
+                        Market #{market.displayId}
+                      </p>
+                      <h3 className="mt-2 text-base font-semibold text-white leading-snug">
+                        {market.title}
+                      </h3>
+                    </div>
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                         market.status === "active"
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-violet-500/10 text-violet-400 border border-violet-500/20"
-                      }`}>
-                        {market.status === "active" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                        {market.status === "active" ? "Live" : "Settled"}
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-medium text-white leading-snug mb-3 group-hover:text-violet-300 transition-colors line-clamp-2">
-                      {market.title}
-                    </h3>
-                    <div className="flex items-center gap-3 text-xs text-zinc-500">
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {market.endDate}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {market.models.length} {market.type === "model" ? "models" : "outcomes"}
-                      </span>
-                      {market.winnerIdx !== undefined && (
-                        <span className="text-emerald-400 flex items-center gap-1">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Resolved
-                        </span>
-                      )}
-                    </div>
-                  </Link>
-                </ScrollReveal>
-              ))}
-            </div>
-          </section>
-        </ScrollReveal>
-
-        {/* WHY DELPHI — FEATURES */}
-        <ScrollReveal delay={0.2}>
-          <section>
-            <h2 className="text-xl font-bold text-white mb-6 text-center">Why Delphi Analytics?</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                {
-                  icon: "📊",
-                  title: "Real-Time Charts",
-                  desc: "Live price data with minute-by-minute updates from Delphi's prediction markets.",
-                },
-                {
-                  icon: "🔮",
-                  title: "Live Odds",
-                  desc: "See current YES/NO probabilities and track how they shift over time.",
-                },
-                {
-                  icon: "🏆",
-                  title: "Leaderboard",
-                  desc: "Track top traders, biggest wins, and P&L across all markets.",
-                },
-                {
-                  icon: "⛓️",
-                  title: "On-Chain Data",
-                  desc: "Every trade indexed from the Gensyn testnet blockchain — fully transparent.",
-                },
-              ].map((feature, i) => (
-                <ScrollReveal key={i} delay={0.05 * i}>
-                  <div className="card p-5 text-center group">
-                    <div className="text-3xl mb-3">{feature.icon}</div>
-                    <h3 className="text-sm font-semibold text-white mb-2 group-hover:text-violet-300 transition-colors">
-                      {feature.title}
-                    </h3>
-                    <p className="text-xs text-zinc-500 leading-relaxed">{feature.desc}</p>
+                          ? "badge-active"
+                          : "badge-settled"
+                      }`}
+                    >
+                      {market.status === "active" ? "Live" : "Settled"}
+                    </span>
                   </div>
-                </ScrollReveal>
-              ))}
-            </div>
-          </section>
-        </ScrollReveal>
 
-        {/* CTA SECTION */}
-        <ScrollReveal delay={0.25}>
-          <section className="text-center py-8">
-            <h2 className="text-2xl font-bold text-white mb-2">Ready to trade?</h2>
-            <p className="text-zinc-500 text-sm mb-6 max-w-md mx-auto">
-              Delphi prediction markets are live on Gensyn Testnet. Place your bets on AI model outcomes.
-            </p>
-            <div className="flex justify-center gap-4">
-              <a
-                href="https://delphi.gensyn.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all"
-              >
-                Start Trading
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-              <Link
-                href="/leaderboard"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-semibold transition-all"
-              >
-                View Leaderboard
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          </section>
-        </ScrollReveal>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="market-mini-chip">{market.endDate}</span>
+                    <span className="market-mini-chip">
+                      {market.models.length} {market.type === "model" ? "models" : "outcomes"}
+                    </span>
+                    {market.winnerIdx !== undefined ? (
+                      <span className="market-mini-chip market-mini-chip-success">Resolved</span>
+                    ) : null}
+                  </div>
 
-        {/* FOOTER */}
-        <section className="pt-8 border-t border-zinc-800/50">
-          <div className="text-center">
-            <p className="text-zinc-600 text-sm">
-              Built with &hearts; for the{" "}
-              <a
-                href="https://gensyn.ai"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-violet-400 hover:underline"
-              >
-                Gensyn
-              </a>{" "}
-              community
+                  <div className="border-t border-white/6 pt-4 flex items-center justify-between gap-4">
+                    <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">
+                      Open detail page
+                    </p>
+                    <span className="text-sm text-zinc-300">Inspect market</span>
+                  </div>
+                </Link>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </section>
+      </ScrollReveal>
+
+      <ScrollReveal duration={0.8} distance={30}>
+        <section className="section-panel">
+          <div className="section-panel-header">
+            <div className="section-panel-copy">
+              <span className="page-eyebrow">Why It Feels Better</span>
+              <h2 className="mt-4 text-2xl font-semibold text-white">
+                Designed for signal, not just stats
+              </h2>
+              <p>
+                The visual pass is now more branded, more layered, and more intentional in motion
+                and hierarchy.
+              </p>
+            </div>
+          </div>
+
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" staggerDelay={0.08}>
+            {featureCards.map((feature) => (
+              <StaggerItem key={feature.title}>
+                <div className="card feature-spotlight-card p-5">
+                  <div className="feature-icon-shell">
+                    {renderFeatureIcon(feature.kind)}
+                  </div>
+                  <h3 className="mt-5 text-lg font-semibold text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-7 text-zinc-400">
+                    {feature.description}
+                  </p>
+                </div>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </section>
+      </ScrollReveal>
+
+      <ScrollReveal duration={0.82} distance={34}>
+        <section className="home-closing-panel">
+          <div className="home-closing-copy">
+            <span className="home-signal-badge">Next Move</span>
+            <h2 className="home-closing-title">
+              Move from homepage polish into real market flow.
+            </h2>
+            <p className="home-closing-description">
+              Jump into live Delphi markets, scan the highest-performing wallets, or head straight
+              to the trading interface when you want the underlying venue.
             </p>
           </div>
+
+          <div className="home-closing-actions">
+            <Link href="/markets" className="premium-button-primary">
+              Browse Markets
+            </Link>
+            <Link href="/leaderboard" className="premium-button-secondary">
+              Open Leaderboard
+            </Link>
+            <a
+              href="https://delphi.gensyn.ai"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="premium-button-ghost"
+            >
+              Launch Delphi
+            </a>
+          </div>
         </section>
-      </div>
-    </>
+      </ScrollReveal>
+    </div>
   );
 }

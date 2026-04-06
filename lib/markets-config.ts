@@ -157,9 +157,16 @@ export const MARKETS: Record<string, MarketConfig> = {
 export const VALID_MARKET_IDS = ["0", "1", "3", "4", "5", "6", "7", "8", "9"];
 export const VALID_MARKET_IDS_BIGINT = [0n, 1n, 3n, 4n, 5n, 6n, 7n, 8n, 9n];
 
+export function normalizeMarketId(marketId: string): string {
+  const trimmed = marketId.trim();
+  return trimmed.startsWith("market-")
+    ? trimmed.slice("market-".length)
+    : trimmed;
+}
+
 // Get market config by internal ID
 export function getMarketConfig(internalId: string): MarketConfig | null {
-  return MARKETS[internalId] || null;
+  return MARKETS[normalizeMarketId(internalId)] || null;
 }
 
 // Get market config by display ID

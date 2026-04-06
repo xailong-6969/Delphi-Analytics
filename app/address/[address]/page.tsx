@@ -77,7 +77,7 @@ export default function AddressPage() {
         const [statsRes, tradesRes, allTradesRes] = await Promise.all([
           fetch(`/api/address/${address}/stats`),
           fetch(`/api/address/${address}/trades?take=50`),
-          fetch(`/api/address/${address}/trades?take=500`),
+          fetch(`/api/address/${address}/trades?take=all&trackedOnly=1`),
         ]);
 
         if (!statsRes.ok) throw new Error("Invalid address or no trades found");

@@ -32,7 +32,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 glass border-b border-[var(--border-color)]" style={{ viewTransitionName: "header" }}>
+      <header className="sticky top-0 z-50 glass border-b border-[var(--border-color)]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4">
             {/* Hamburger + Logo */}

@@ -9,6 +9,9 @@ interface ScrollRevealProps {
   delay?: number;
   direction?: "up" | "left" | "right";
   blur?: boolean;
+  distance?: number;
+  duration?: number;
+  scale?: number;
 }
 
 export default function ScrollReveal({
@@ -17,6 +20,9 @@ export default function ScrollReveal({
   delay = 0,
   direction = "up",
   blur = true,
+  distance = 30,
+  duration = 0.7,
+  scale = 0.985,
 }: ScrollRevealProps) {
   const ref = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
@@ -25,11 +31,26 @@ export default function ScrollReveal({
   const getInitial = () => {
     switch (direction) {
       case "left":
-        return { opacity: 0, x: -40, filter: blur ? "blur(6px)" : "blur(0px)" };
+        return {
+          opacity: 0,
+          x: -distance,
+          scale,
+          filter: blur ? "blur(6px)" : "blur(0px)",
+        };
       case "right":
-        return { opacity: 0, x: 40, filter: blur ? "blur(6px)" : "blur(0px)" };
+        return {
+          opacity: 0,
+          x: distance,
+          scale,
+          filter: blur ? "blur(6px)" : "blur(0px)",
+        };
       default:
-        return { opacity: 0, y: 30, filter: blur ? "blur(6px)" : "blur(0px)" };
+        return {
+          opacity: 0,
+          y: distance,
+          scale,
+          filter: blur ? "blur(6px)" : "blur(0px)",
+        };
     }
   };
 
@@ -37,9 +58,9 @@ export default function ScrollReveal({
     switch (direction) {
       case "left":
       case "right":
-        return { opacity: 1, x: 0, filter: "blur(0px)" };
+        return { opacity: 1, x: 0, scale: 1, filter: "blur(0px)" };
       default:
-        return { opacity: 1, y: 0, filter: "blur(0px)" };
+        return { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
     }
   };
 
@@ -68,7 +89,7 @@ export default function ScrollReveal({
       initial={getInitial()}
       animate={controls}
       transition={{
-        duration: 0.7,
+        duration,
         delay,
         ease: [0.22, 1, 0.36, 1],
       }}
@@ -144,10 +165,11 @@ export function StaggerItem({
     <motion.div
       className={className}
       variants={{
-        hidden: { opacity: 0, y: 24, filter: "blur(4px)" },
+        hidden: { opacity: 0, y: 24, scale: 0.985, filter: "blur(4px)" },
         visible: {
           opacity: 1,
           y: 0,
+          scale: 1,
           filter: "blur(0px)",
           transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
         },

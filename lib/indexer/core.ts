@@ -1,5 +1,6 @@
 import { createPublicClient, http, parseAbiItem, getAddress, type Log } from "viem";
 import { PrismaClient } from "@prisma/client";
+import { MARKET_WINNERS } from "../markets-config";
 
 // ============================================
 // CONFIGURATION
@@ -337,17 +338,8 @@ export async function runIndexer(
 
 // ============================================
 // RECALCULATE STATS - with correct P&L calculation
-// Uses MARKET_WINNERS from config, matching original leaderboard
+// Uses the shared MARKET_WINNERS map from markets-config.
 // ============================================
-
-// Import market winners from config
-const MARKET_WINNERS: Record<string, number> = {
-  "0": 0,  // Market 0 winner is model 0
-  "1": 0,  // Market 1 winner is model 0
-  "3": 1,  // Market 3 winner is Qwen/Qwen3-8B (model idx 1)
-  "4": 3,  // Market 4 winner is grok-4.1-fast-reasoning (model idx 3)
-  "5": 0,  // Market 5 winner is NO (model idx 0)
-};
 
 export async function recalculateTraderStats(prisma: PrismaClient): Promise<number> {
   const traders = await prisma.trade.findMany({ distinct: ['trader'], select: { trader: true } });
@@ -412,8 +404,6 @@ export async function recalculateTraderStats(prisma: PrismaClient): Promise<numb
             realizedPnl -= pos.cost;
           }
         }
-        // NOTE: Market 3 is not in MARKET_WINNERS, so no settlement P&L is added
-        // This is correct - market 3 is still running
       }
     }
 
