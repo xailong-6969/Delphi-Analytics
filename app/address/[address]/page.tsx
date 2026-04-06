@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,10 +13,18 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { formatTokens, formatAddress, formatTimeAgo, formatDate } from "@/lib/utils";
+import { formatTokens, formatTimeAgo, formatDate } from "@/lib/utils";
 import { LINKS } from "@/lib/constants";
 import { MARKETS } from "@/lib/markets-config";
 import StatCard from "@/components/ui/StatCard";
+
+interface PnlDataPoint {
+  time: string;
+  displayTime: string;
+  pnl: number;
+  cumulativePnl: number;
+  volume: number;
+}
 
 interface AddressStats {
   address: string;
@@ -33,6 +41,9 @@ interface AddressStats {
   unrealizedCostBasis: string;
   firstTrade: string | null;
   lastTrade: string | null;
+  rank: number | null;
+  totalTraders: number;
+  pnlChart: PnlDataPoint[];
 }
 
 interface Trade {
@@ -48,157 +59,57 @@ interface Trade {
   impliedProbability: number;
 }
 
-interface PnlDataPoint {
-  time: string;
-  displayTime: string;
-  pnl: number;
-  cumulativePnl: number;
-  volume: number;
-}
+function calculateVolumeShare(part: string, total: string): number {
+  const totalBigInt = BigInt(total);
+  if (totalBigInt === 0n) {
+    return 0;
+  }
 
-interface RankData {
-  rank: number;
-  totalTraders: number;
+  return Number((BigInt(part) * 10000n) / totalBigInt) / 100;
 }
 
 export default function AddressPage() {
   const { address } = useParams();
   const [stats, setStats] = useState<AddressStats | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [allTrades, setAllTrades] = useState<Trade[]>([]);
-  const [rankData, setRankData] = useState<RankData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        // Fetch stats and trades
-        const [statsRes, tradesRes, allTradesRes] = await Promise.all([
+        const [statsRes, tradesRes] = await Promise.all([
           fetch(`/api/address/${address}/stats`),
           fetch(`/api/address/${address}/trades?take=50`),
-          fetch(`/api/address/${address}/trades?take=all&trackedOnly=1`),
         ]);
 
-        if (!statsRes.ok) throw new Error("Invalid address or no trades found");
+        if (!statsRes.ok) {
+          throw new Error("Invalid address or no trades found");
+        }
 
-        const [statsData, tradesData, allTradesData] = await Promise.all([
-          statsRes.json(),
-          tradesRes.json(),
-          allTradesRes.json(),
-        ]);
-
+        const [statsData, tradesData] = await Promise.all([statsRes.json(), tradesRes.json()]);
         setStats(statsData);
         setTrades(tradesData.trades || []);
-        setAllTrades(allTradesData.trades || []);
-
-        // Fetch rank separately (don't fail if it errors)
-        try {
-          const rankRes = await fetch(`/api/leaderboard?search=${address}`);
-          if (rankRes.ok) {
-            const rankJson = await rankRes.json();
-            if (rankJson.leaderboard && rankJson.leaderboard.length > 0) {
-              const trader = rankJson.leaderboard.find(
-                (t: any) => t.address.toLowerCase() === (address as string).toLowerCase()
-              );
-              if (trader) {
-                setRankData({
-                  rank: trader.rank,
-                  totalTraders: rankJson.totalTraders || 0,
-                });
-              }
-            }
-          }
-        } catch (e) {
-          console.log("Could not fetch rank:", e);
-        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load");
       } finally {
         setLoading(false);
       }
     }
-    if (address) fetchData();
+
+    if (address) {
+      fetchData();
+    }
   }, [address]);
-
-  // Calculate P&L over time for chart
-  const pnlChartData = useMemo(() => {
-    if (!allTrades || allTrades.length === 0) return [];
-
-    const sortedTrades = [...allTrades].sort(
-      (a, b) => new Date(a.blockTime).getTime() - new Date(b.blockTime).getTime()
-    );
-
-    const positions = new Map<string, { shares: number; cost: number }>();
-    let cumulativePnl = 0;
-    const dataPoints: PnlDataPoint[] = [];
-
-    for (const trade of sortedTrades) {
-      const tokens = Math.abs(parseFloat(trade.tokensDelta)) / 1e18;
-      const shares = Math.abs(parseFloat(trade.sharesDelta)) / 1e18;
-      const posKey = `${trade.marketId}:${trade.modelIdx}`;
-
-      let tradePnl = 0;
-
-      if (trade.isBuy) {
-        const pos = positions.get(posKey) || { shares: 0, cost: 0 };
-        pos.shares += shares;
-        pos.cost += tokens;
-        positions.set(posKey, pos);
-      } else {
-        const pos = positions.get(posKey);
-        if (pos && pos.shares > 0) {
-          const avgCost = pos.cost / pos.shares;
-          const costBasis = avgCost * shares;
-          tradePnl = tokens - costBasis;
-          pos.shares -= shares;
-          pos.cost -= costBasis;
-          if (pos.shares < 0) pos.shares = 0;
-          if (pos.cost < 0) pos.cost = 0;
-          positions.set(posKey, pos);
-        } else {
-          tradePnl = tokens;
-        }
-      }
-
-      cumulativePnl += tradePnl;
-
-      dataPoints.push({
-        time: trade.blockTime,
-        displayTime: new Date(trade.blockTime).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
-        pnl: tradePnl,
-        cumulativePnl: cumulativePnl,
-        volume: tokens,
-      });
-    }
-
-    const dailyData = new Map<string, PnlDataPoint>();
-    for (const point of dataPoints) {
-      const day = point.displayTime;
-      if (dailyData.has(day)) {
-        const existing = dailyData.get(day)!;
-        existing.pnl += point.pnl;
-        existing.volume += point.volume;
-        existing.cumulativePnl = point.cumulativePnl;
-      } else {
-        dailyData.set(day, { ...point });
-      }
-    }
-
-    return Array.from(dailyData.values());
-  }, [allTrades]);
 
   if (loading) {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-zinc-800 rounded w-1/2"></div>
-          <div className="grid grid-cols-4 gap-4 mt-8">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-24 bg-zinc-800 rounded-xl"></div>
+          <div className="h-8 w-1/2 rounded bg-zinc-800" />
+          <div className="mt-8 grid grid-cols-4 gap-4">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="h-24 rounded-xl bg-zinc-800" />
             ))}
           </div>
         </div>
@@ -210,9 +121,9 @@ export default function AddressPage() {
     return (
       <div className="mx-auto max-w-7xl px-4 py-8">
         <div className="card p-12 text-center">
-          <p className="text-red-400 text-lg">{error || "Address not found"}</p>
+          <p className="text-lg text-red-400">{error || "Address not found"}</p>
           <Link href="/" className="mt-4 inline-block text-blue-400 hover:underline">
-            ← Back to Home
+            Back to Home
           </Link>
         </div>
       </div>
@@ -222,18 +133,19 @@ export default function AddressPage() {
   const pnl = BigInt(stats.realizedPnl);
   const isProfitable = pnl > 0n;
   const isLoss = pnl < 0n;
+  const buyVolumeShare = calculateVolumeShare(stats.buyVolume, stats.totalVolume);
+  const sellVolumeShare = calculateVolumeShare(stats.sellVolume, stats.totalVolume);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      {/* Header */}
       <div className="mb-8">
-        <div className="flex flex-wrap items-center gap-3 mb-2">
-          <h1 className="text-xl sm:text-2xl font-bold text-white font-mono break-all">
+        <div className="mb-2 flex flex-wrap items-center gap-3">
+          <h1 className="break-all font-mono text-xl font-bold text-white sm:text-2xl">
             {stats.address}
           </h1>
-          {rankData && (
-            <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-sm font-medium">
-              🏆 #{rankData.rank.toLocaleString()} of {rankData.totalTraders.toLocaleString()}
+          {stats.rank !== null && (
+            <span className="rounded-full bg-amber-500/20 px-3 py-1 text-sm font-medium text-amber-400">
+              Rank #{stats.rank.toLocaleString()} of {stats.totalTraders.toLocaleString()}
             </span>
           )}
           <a
@@ -242,19 +154,18 @@ export default function AddressPage() {
             rel="noopener noreferrer"
             className="shrink-0 text-sm text-zinc-500 hover:text-zinc-300"
           >
-            View on Explorer ↗
+            View on Explorer ->
           </a>
         </div>
-        <p className="text-zinc-500 text-sm">
+        <p className="text-sm text-zinc-500">
           Trading since {stats.firstTrade ? formatDate(stats.firstTrade) : "N/A"}
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           title="Realized P&L"
-          value={(isProfitable ? "+" : "") + formatTokens(stats.realizedPnl)}
+          value={`${isProfitable ? "+" : ""}${formatTokens(stats.realizedPnl)}`}
           color={isProfitable ? "green" : isLoss ? "red" : "blue"}
           subtitle="$TEST"
         />
@@ -278,12 +189,11 @@ export default function AddressPage() {
         />
       </div>
 
-      {/* P&L Chart */}
-      {pnlChartData.length > 1 && (
-        <div className="card p-5 mb-8">
-          <h2 className="font-semibold text-white mb-4">📈 P&L Over Time</h2>
+      {stats.pnlChart.length > 1 && (
+        <div className="card mb-8 p-5">
+          <h2 className="mb-4 font-semibold text-white">P&L Over Time</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={pnlChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+            <AreaChart data={stats.pnlChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop
@@ -307,7 +217,9 @@ export default function AddressPage() {
               <YAxis
                 stroke="#52525b"
                 tick={{ fill: "#71717a", fontSize: 11 }}
-                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}K` : v.toFixed(0))}
+                tickFormatter={(value) =>
+                  value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toFixed(0)
+                }
               />
               <Tooltip
                 contentStyle={{
@@ -333,58 +245,48 @@ export default function AddressPage() {
         </div>
       )}
 
-      {/* Volume breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <span className="text-sm text-zinc-500">Buy Volume</span>
             <span className="font-mono text-emerald-400">{formatTokens(stats.buyVolume)}</span>
           </div>
-          <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
             <div
-              className="h-full bg-emerald-500 rounded-full"
-              style={{
-                width: `${
-                  (Number(BigInt(stats.buyVolume)) / (Number(BigInt(stats.totalVolume)) || 1)) * 100
-                }%`,
-              }}
+              className="h-full rounded-full bg-emerald-500"
+              style={{ width: `${buyVolumeShare}%` }}
             />
           </div>
         </div>
         <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
+          <div className="mb-3 flex items-center justify-between">
             <span className="text-sm text-zinc-500">Sell Volume</span>
             <span className="font-mono text-red-400">{formatTokens(stats.sellVolume)}</span>
           </div>
-          <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
             <div
-              className="h-full bg-red-500 rounded-full"
-              style={{
-                width: `${
-                  (Number(BigInt(stats.sellVolume)) / (Number(BigInt(stats.totalVolume)) || 1)) * 100
-                }%`,
-              }}
+              className="h-full rounded-full bg-red-500"
+              style={{ width: `${sellVolumeShare}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* Trade History */}
       <div className="card overflow-hidden">
-        <div className="p-4 border-b border-[var(--border-color)]">
+        <div className="border-b border-[var(--border-color)] p-4">
           <h2 className="font-semibold text-white">Trade History</h2>
         </div>
         {trades.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="text-left text-xs text-zinc-500 border-b border-[var(--border-color)]">
+                <tr className="border-b border-[var(--border-color)] text-left text-xs text-zinc-500">
                   <th className="px-4 py-3 font-medium">Type</th>
                   <th className="px-4 py-3 font-medium">Market</th>
                   <th className="px-4 py-3 font-medium">Model</th>
-                  <th className="px-4 py-3 font-medium text-right">Amount</th>
-                  <th className="px-4 py-3 font-medium text-right">Price</th>
-                  <th className="px-4 py-3 font-medium text-right">Time</th>
+                  <th className="px-4 py-3 text-right font-medium">Amount</th>
+                  <th className="px-4 py-3 text-right font-medium">Price</th>
+                  <th className="px-4 py-3 text-right font-medium">Time</th>
                 </tr>
               </thead>
               <tbody>
@@ -395,7 +297,7 @@ export default function AddressPage() {
                   >
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
                           trade.isBuy
                             ? "bg-emerald-500/10 text-emerald-400"
                             : "bg-red-500/10 text-red-400"
@@ -407,9 +309,10 @@ export default function AddressPage() {
                     <td className="px-4 py-3">
                       <Link
                         href={`/markets/${trade.marketId}`}
-                        className="text-sm text-zinc-300 hover:text-blue-400 transition-colors truncate max-w-[180px] block"
+                        className="block max-w-[180px] truncate text-sm text-zinc-300 transition-colors hover:text-blue-400"
                       >
-                        {trade.marketTitle || `Market #${MARKETS[trade.marketId]?.displayId || trade.marketId}`}
+                        {trade.marketTitle ||
+                          `Market #${MARKETS[trade.marketId]?.displayId || trade.marketId}`}
                       </Link>
                     </td>
                     <td className="px-4 py-3">

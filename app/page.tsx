@@ -198,7 +198,7 @@ export default function HomePage() {
     },
     {
       kind: "wallet" as const,
-      title: "Wallet Intelligence",
+      title: "Wallet Analytics",
       description:
         "Jump from leaderboard ranks to address-level trade history and P&L in one flow.",
     },
@@ -227,7 +227,7 @@ export default function HomePage() {
         >
           <div className="home-loading-ring" />
           <p className="mt-5 text-sm uppercase tracking-[0.18em] text-zinc-500">
-            Loading Delphi intelligence
+            Loading Delphi Testnet Statistics
           </p>
         </motion.div>
       </div>
@@ -243,18 +243,18 @@ export default function HomePage() {
           animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
-          <span className="home-signal-badge">Delphi Intelligence Layer</span>
+          <span className="home-signal-badge">Delphi Testnet Analytics</span>
           <p className="home-command-kicker">
-            A premium command center for Gensyn prediction market signal.
+            A premium statistics and analytics dashboard for Delphi on Gensyn Testnet.
           </p>
           <h1 className="home-command-title">
-            Trade conviction, wallet behavior, and resolution history in one
+            Track market conviction, wallet behavior, and resolution history in one
             <span className="gradient-text-luxury"> cinematic dashboard.</span>
           </h1>
           <p className="home-command-description">
-            Delphi Analytics turns live Gensyn testnet data into a sharper market interface:
-            high-signal market views, ranked trader intelligence, and a branded landing
-            experience that feels closer to a premium terminal than a plain stats page.
+            Delphi Analytics turns live Gensyn testnet activity into a cleaner statistics
+            interface: featured market tracking, ranked trader analytics, and sharper market
+            browsing that feels closer to a premium terminal than a plain stats page.
           </p>
 
           <div className="home-command-actions">
@@ -277,7 +277,7 @@ export default function HomePage() {
           <div className="home-insight-row">
             {[
               "Live market pulse",
-              "Wallet P&L intelligence",
+              "Wallet P&L analytics",
               "Resolved market archive",
             ].map((item) => (
               <span key={item} className="home-insight-chip">
@@ -309,8 +309,8 @@ export default function HomePage() {
             <div className="home-stage-orbit orbit-one" aria-hidden="true" />
             <div className="home-stage-orbit orbit-two" aria-hidden="true" />
             <div className="home-stage-tag">
-              <span className="home-stage-tag-label">Flagship View</span>
-              <span className="home-stage-tag-value">Featured market intelligence</span>
+              <span className="home-stage-tag-label">Featured Market</span>
+              <span className="home-stage-tag-value">Featured market in Delphi</span>
             </div>
             <FeaturedMarketHero />
           </div>

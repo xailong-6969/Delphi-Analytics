@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAddress } from "viem";
-import { VALID_MARKET_IDS_BIGINT, MARKET_WINNERS } from "@/lib/markets-config";
+import { VALID_MARKET_IDS_BIGINT } from "@/lib/markets-config";
+import { analyzeTraderTrades } from "@/lib/trader-analytics";
+import { getTraderRankSnapshot } from "@/lib/leaderboard-data";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -23,7 +25,6 @@ export async function GET(
   try {
     const address = getAddress(rawAddress);
 
-    // Get all trades for this address - SAME MARKETS as leaderboard
     const trades = await prisma.trade.findMany({
       where: {
         trader: address,
@@ -40,99 +41,46 @@ export async function GET(
       },
     });
 
-    // Calculate stats - SAME LOGIC as leaderboard
-    let totalVolume = 0n;
-    let buyVolume = 0n;
-    let sellVolume = 0n;
-    let buyCount = 0;
-    let sellCount = 0;
-    let realizedPnl = 0n;
+    const uniqueMarketIds = Array.from(new Set(trades.map((trade) => trade.marketId.toString()))).map(
+      (marketId) => BigInt(marketId)
+    );
 
-    const marketsTraded = new Set<string>();
-    const modelsTraded = new Set<string>();
-    const positions = new Map<string, { shares: bigint; cost: bigint }>();
+    const settledMarkets = uniqueMarketIds.length
+      ? await prisma.market.findMany({
+          where: { marketId: { in: uniqueMarketIds } },
+          select: {
+            marketId: true,
+            settledAt: true,
+          },
+        })
+      : [];
 
-    for (const trade of trades) {
-      const tokens = BigInt(trade.tokensDelta);
-      const shares = BigInt(trade.sharesDelta);
-      const absTokens = tokens < 0n ? -tokens : tokens;
-      const absShares = shares < 0n ? -shares : shares;
+    const marketSettledAtById = Object.fromEntries(
+      settledMarkets.map((market) => [market.marketId.toString(), market.settledAt])
+    );
 
-      totalVolume += absTokens;
-      marketsTraded.add(trade.marketId.toString());
-      modelsTraded.add(`${trade.marketId}:${trade.modelIdx}`);
-
-      const posKey = `${trade.marketId}:${trade.modelIdx}`;
-      let pos = positions.get(posKey) || { shares: 0n, cost: 0n };
-
-      if (trade.isBuy) {
-        buyCount++;
-        buyVolume += absTokens;
-        pos.shares += absShares;
-        pos.cost += absTokens;
-      } else {
-        sellCount++;
-        sellVolume += absTokens;
-        if (pos.shares > 0n) {
-          const avgCost = (pos.cost * BigInt(1e18)) / pos.shares;
-          const costBasis = (avgCost * absShares) / BigInt(1e18);
-          const pnl = absTokens - costBasis;
-          realizedPnl += pnl;
-
-          pos.shares -= absShares;
-          pos.cost -= costBasis;
-          if (pos.shares < 0n) pos.shares = 0n;
-          if (pos.cost < 0n) pos.cost = 0n;
-        } else {
-          realizedPnl += absTokens;
-        }
-      }
-      positions.set(posKey, pos);
-    }
-
-    // Add settlement P&L - SAME LOGIC as leaderboard
-    let openPositions = 0;
-    let unrealizedCostBasis = 0n;
-    let totalCostBasis = 0n;
-
-    for (const [posKey, pos] of positions.entries()) {
-      totalCostBasis += pos.cost;
-
-      if (pos.shares > 0n) {
-        const [marketId, modelIdx] = posKey.split(":");
-        const winnerIdx = MARKET_WINNERS[marketId];
-
-        if (winnerIdx !== undefined) {
-          // Market is settled
-          if (Number(modelIdx) === winnerIdx) {
-            realizedPnl += pos.shares - pos.cost;
-          } else {
-            realizedPnl -= pos.cost;
-          }
-        } else {
-          // Market not settled - open position
-          openPositions++;
-          unrealizedCostBasis += pos.cost;
-        }
-      }
-    }
+    const summary = analyzeTraderTrades(trades, marketSettledAtById);
+    const rankSnapshot = await getTraderRankSnapshot(address, "pnl");
 
     return NextResponse.json({
       address,
       totalTrades: trades.length,
-      totalVolume: totalVolume.toString(),
-      buyVolume: buyVolume.toString(),
-      sellVolume: sellVolume.toString(),
-      buyCount,
-      sellCount,
-      marketsTraded: marketsTraded.size,
-      modelsTraded: modelsTraded.size,
-      openPositions,
-      realizedPnl: realizedPnl.toString(),
-      totalCostBasis: totalCostBasis.toString(),
-      unrealizedCostBasis: unrealizedCostBasis.toString(),
-      firstTrade: trades[0]?.blockTime || null,
-      lastTrade: trades[trades.length - 1]?.blockTime || null,
+      totalVolume: summary.totalVolume.toString(),
+      buyVolume: summary.buyVolume.toString(),
+      sellVolume: summary.sellVolume.toString(),
+      buyCount: summary.buyCount,
+      sellCount: summary.sellCount,
+      marketsTraded: summary.marketsTraded,
+      modelsTraded: summary.modelsTraded,
+      openPositions: summary.openPositions,
+      realizedPnl: summary.realizedPnl.toString(),
+      totalCostBasis: summary.totalCostBasis.toString(),
+      unrealizedCostBasis: summary.unrealizedCostBasis.toString(),
+      firstTrade: summary.firstTrade,
+      lastTrade: summary.lastTrade,
+      rank: rankSnapshot?.rank ?? null,
+      totalTraders: rankSnapshot?.totalTraders ?? 0,
+      pnlChart: summary.chartData,
     });
   } catch (e) {
     console.error("Address stats error:", e);
