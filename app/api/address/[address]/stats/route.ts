@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAddress } from "viem";
-import { VALID_MARKET_IDS_BIGINT } from "@/lib/markets-config";
 import { analyzeTraderTrades } from "@/lib/trader-analytics";
 import { getTraderRankSnapshot } from "@/lib/leaderboard-data";
+import { getSettledWinnerMap } from "@/lib/live-markets";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,7 +28,6 @@ export async function GET(
     const trades = await prisma.trade.findMany({
       where: {
         trader: address,
-        marketId: { in: VALID_MARKET_IDS_BIGINT }
       },
       orderBy: { blockTime: "asc" },
       select: {
@@ -41,25 +40,8 @@ export async function GET(
       },
     });
 
-    const uniqueMarketIds = Array.from(new Set(trades.map((trade) => trade.marketId.toString()))).map(
-      (marketId) => BigInt(marketId)
-    );
-
-    const settledMarkets = uniqueMarketIds.length
-      ? await prisma.market.findMany({
-          where: { marketId: { in: uniqueMarketIds } },
-          select: {
-            marketId: true,
-            settledAt: true,
-          },
-        })
-      : [];
-
-    const marketSettledAtById = Object.fromEntries(
-      settledMarkets.map((market) => [market.marketId.toString(), market.settledAt])
-    );
-
-    const summary = analyzeTraderTrades(trades, marketSettledAtById);
+    const settledWinnerMap = await getSettledWinnerMap(prisma);
+    const summary = analyzeTraderTrades(trades, settledWinnerMap);
     const rankSnapshot = await getTraderRankSnapshot(address, "pnl");
 
     return NextResponse.json({

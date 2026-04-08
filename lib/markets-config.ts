@@ -142,8 +142,9 @@ export const MARKETS: Record<string, MarketConfig> = {
     internalId: "9",
     displayId: "9",
     title: "Will Brent Crude Close Above $110 As Of Market Close (18:30 UTC) On Friday, April 3, 2026?",
-    status: "active",
+    status: "settled",
     type: "outcome",
+    winnerIdx: 0,  // NO won
     endDate: "Apr 6",
     endTimestamp: "2026-04-06T22:43:00Z",
     models: [
@@ -197,6 +198,7 @@ export const MARKET_WINNERS: Record<string, number> = {
   "6": 1,  // YES won (Chalamet Best Actor)
   "7": 1,  // YES won (March Madness #1 seeds survived)
   "8": 0,  // NO won (Bitcoin not above $75K)
+  "9": 0,  // NO won (Brent not above $110)
 };
 
 // Check if a market has ended based on endTimestamp

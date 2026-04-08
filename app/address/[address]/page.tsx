@@ -15,7 +15,6 @@ import {
 } from "recharts";
 import { formatTokens, formatTimeAgo, formatDate } from "@/lib/utils";
 import { LINKS } from "@/lib/constants";
-import { MARKETS } from "@/lib/markets-config";
 import StatCard from "@/components/ui/StatCard";
 
 interface PnlDataPoint {
@@ -311,8 +310,7 @@ export default function AddressPage() {
                         href={`/markets/${trade.marketId}`}
                         className="block max-w-[180px] truncate text-sm text-zinc-300 transition-colors hover:text-blue-400"
                       >
-                        {trade.marketTitle ||
-                          `Market #${MARKETS[trade.marketId]?.displayId || trade.marketId}`}
+                        {trade.marketTitle || `Market #${trade.marketId}`}
                       </Link>
                     </td>
                     <td className="px-4 py-3">

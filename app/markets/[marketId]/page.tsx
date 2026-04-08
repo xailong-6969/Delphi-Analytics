@@ -14,9 +14,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatAddress, formatTimeAgo, formatTokens } from "@/lib/utils";
+import { formatAddress, formatTimeAgo, formatTokens, parseModelsJson } from "@/lib/utils";
 import { LINKS } from "@/lib/constants";
-import { VALID_MARKET_IDS, getMarketConfig, normalizeMarketId } from "@/lib/markets-config";
+import { normalizeMarketId } from "@/lib/markets-config";
 import CountdownTimer from "@/components/CountdownTimer";
 
 const MODEL_COLORS = [
@@ -191,8 +191,7 @@ function buildChartRows(
 
 export default function MarketDetailPage({ params }: PageProps) {
   const internalId = normalizeMarketId(params.marketId);
-  const config = getMarketConfig(internalId);
-  const isValid = Boolean(config) && VALID_MARKET_IDS.includes(internalId);
+  const isValid = /^\d+$/.test(internalId);
 
   const [marketData, setMarketData] = useState<MarketDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -241,10 +240,20 @@ export default function MarketDetailPage({ params }: PageProps) {
     };
   }, [internalId, isValid]);
 
-  const models = config?.models ?? [];
-  const isSettled = config?.status === "settled";
-  const isActive = config?.status === "active";
-  const isOutcome = config?.type === "outcome";
+  const models = useMemo(() => {
+    return parseModelsJson(marketData?.market.modelsJson).map((model) => ({
+      idx: model.idx,
+      name: model.modelName || model.fullName || `Model ${model.idx}`,
+      family: model.familyName || "",
+    }));
+  }, [marketData?.market.modelsJson]);
+  const marketStatusCode = marketData?.market.status;
+  const isSettled = marketStatusCode === 2;
+  const isActive = marketStatusCode === 0;
+  const isOutcome =
+    models.length === 2 &&
+    models.some((model) => model.name.toUpperCase() === "YES") &&
+    models.some((model) => model.name.toUpperCase() === "NO");
   const entryLabel = isOutcome ? "Outcome" : "Model";
   const entriesLabel = isOutcome ? "Outcomes" : "Models";
   const winnerLabel = isOutcome ? "Winning outcome" : "Winning model";
@@ -253,8 +262,8 @@ export default function MarketDetailPage({ params }: PageProps) {
     if (marketData?.market.winningModelIdx) {
       return Number(marketData.market.winningModelIdx);
     }
-    return config?.winnerIdx;
-  }, [config?.winnerIdx, marketData?.market.winningModelIdx]);
+    return undefined;
+  }, [marketData?.market.winningModelIdx]);
 
   const latestProbabilityMap = useMemo(() => {
     const map = new Map<string, number | null>();
@@ -346,7 +355,7 @@ export default function MarketDetailPage({ params }: PageProps) {
   const leadingEntry = sortedEntryCards[0];
   const winningEntry = sortedEntryCards.find((card) => card.isWinner) ?? leadingEntry;
 
-  const marketTitle = marketData?.market.title || config?.title || `Market #${config?.displayId ?? internalId}`;
+  const marketTitle = marketData?.market.title || `Market #${internalId}`;
   const marketDescription =
     marketData?.market.description ||
     (isOutcome
@@ -358,13 +367,27 @@ export default function MarketDetailPage({ params }: PageProps) {
   const configUriHref = toConfigUriHref(marketData?.market.configUri);
   const totalTrades = marketData?.market.totalTrades ?? 0;
   const totalVolume = marketData?.market.totalVolume ?? "0";
-  const settlementDate = marketData?.market.settledAt || marketData?.market.endTime || config?.endTimestamp || null;
+  const settlementDate = marketData?.market.settledAt || marketData?.market.endTime || null;
+  const endTime = marketData?.market.endTime || null;
 
-  if (!isValid || !config) {
+  if (!isValid) {
     return (
       <div className="page-shell mx-auto max-w-7xl px-4 py-8">
         <section className="section-panel p-10 text-center">
           <p className="text-red-400 text-lg mb-4">Market not found</p>
+          <Link href="/markets" className="text-blue-400 hover:underline">
+            Back to markets
+          </Link>
+        </section>
+      </div>
+    );
+  }
+
+  if (!loading && !marketData) {
+    return (
+      <div className="page-shell mx-auto max-w-7xl px-4 py-8">
+        <section className="section-panel p-10 text-center">
+          <p className="text-red-400 text-lg mb-4">{error || "Market not found"}</p>
           <Link href="/markets" className="text-blue-400 hover:underline">
             Back to markets
           </Link>
@@ -408,7 +431,7 @@ export default function MarketDetailPage({ params }: PageProps) {
           }`}>
             {isSettled ? "Settled" : "Live"}
           </span>
-          <span className="hero-meta-pill">Market #{config.displayId}</span>
+          <span className="hero-meta-pill">Market #{internalId}</span>
           <span className="hero-meta-pill">{marketCategory}</span>
         </div>
 
@@ -418,9 +441,9 @@ export default function MarketDetailPage({ params }: PageProps) {
             <p className="page-description mt-4">{marketDescription}</p>
           </div>
           <div className="flex flex-col gap-3 sm:items-end">
-            {isActive && config.endTimestamp ? (
+            {isActive && endTime ? (
               <div className="rounded-full border border-emerald-500/25 bg-emerald-500/8 px-4 py-3">
-                <CountdownTimer endTimestamp={config.endTimestamp} label="Ends in" />
+                <CountdownTimer endTimestamp={endTime} label="Ends in" />
               </div>
             ) : settlementDate ? (
               <div className="rounded-full border border-amber-500/25 bg-amber-500/8 px-4 py-3 text-sm text-amber-200">
@@ -444,7 +467,7 @@ export default function MarketDetailPage({ params }: PageProps) {
           <div className="page-stat-card">
             <div className="page-stat-label">{isSettled ? "Resolution" : "Market Ends"}</div>
             <div className="page-stat-value text-purple-400">
-              {settlementDate ? formatCalendarDate(settlementDate) : (config.endDate || "-")}
+              {settlementDate ? formatCalendarDate(settlementDate) : "-"}
             </div>
             <div className="page-stat-caption">{winnerLabel}</div>
           </div>

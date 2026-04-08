@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { VALID_MARKET_IDS, normalizeMarketId } from "@/lib/markets-config";
+import { isNumericMarketId } from "@/lib/live-markets";
+import { normalizeMarketId } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,7 @@ export async function GET(
   const marketIdStr = normalizeMarketId(rawMarketId);
   
   try {
-    if (!VALID_MARKET_IDS.includes(marketIdStr)) {
+    if (!isNumericMarketId(marketIdStr)) {
       return NextResponse.json({ error: "Invalid market ID" }, { status: 400 });
     }
 

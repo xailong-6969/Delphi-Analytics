@@ -1,190 +1,244 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  AreaChart,
-  Area,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  Tooltip,
-  ResponsiveContainer,
+  LineChart,
+  Line,
+  CartesianGrid,
 } from "recharts";
 import CountdownTimer from "@/components/CountdownTimer";
-import { MARKETS, MarketConfig } from "@/lib/markets-config";
+import type { LiveMarketSummary } from "@/lib/live-markets";
+import { parseModelsJson } from "@/lib/utils";
 
-interface ChartDataPoint {
-  timestamp: number;
-  yesPrice: number;
-  noPrice: number;
-  label: string;
-}
+const MODEL_COLORS = [
+  "#34d399",
+  "#60a5fa",
+  "#f59e0b",
+  "#f472b6",
+  "#a78bfa",
+  "#f87171",
+  "#22d3ee",
+  "#84cc16",
+];
 
-interface DelphiChartResponse {
-  market_id: string;
-  timeframe: string;
-  resolution: string;
-  data_points: Array<{
-    timestamp: number;
-    entries: Array<{
-      entry_idx: string;
-      price: string;
-      shares: string;
-    }>;
+interface MarketDetailResponse {
+  market: {
+    marketId: string;
+    title: string | null;
+    status: number;
+    winningModelIdx?: string | null;
+    endTime?: string | null;
+    modelsJson?: unknown;
+  };
+  latestPrices: Array<{
+    modelIdx: string;
+    probability: number | null;
   }>;
+  priceHistory: Record<string, Array<{ time: string; probability: number }>>;
 }
 
-function getActiveMarket(): MarketConfig | null {
-  for (const market of Object.values(MARKETS)) {
-    if (market.status === "active") return market;
-  }
-  return null;
+interface FeaturedMarketHeroProps {
+  market: LiveMarketSummary | null;
 }
 
-function getMostRecentSettledMarket(): MarketConfig | null {
-  const settled = Object.values(MARKETS)
-    .filter((m) => m.status === "settled")
-    .sort((a, b) => parseInt(b.displayId) - parseInt(a.displayId));
-  return settled[0] || null;
+interface EntrySnapshot {
+  idx: number;
+  name: string;
+  family: string;
+  probability: number;
+  isWinner: boolean;
+  color: string;
 }
 
-function formatTimestamp(ts: number): string {
-  const d = new Date(ts * 1000);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function formatTooltipTime(ts: number): string {
-  const d = new Date(ts * 1000);
-  return d.toLocaleString("en-US", {
+function formatAxisTime(value: string) {
+  return new Date(value).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
-interface CustomTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  label?: any;
-}
+function buildChartRows(
+  models: EntrySnapshot[],
+  priceHistory: Record<string, Array<{ time: string; probability: number }>>
+) {
+  const rows = new Map<string, Record<string, string | number | null>>();
 
-function ChartTooltip({ active, payload }: CustomTooltipProps) {
-  if (!active || !payload?.length) return null;
-  const data = payload[0]?.payload;
-  if (!data) return null;
+  for (const model of models) {
+    const points = priceHistory[String(model.idx)] || [];
+    for (const point of points) {
+      if (!rows.has(point.time)) {
+        rows.set(point.time, {
+          time: point.time,
+          label: formatAxisTime(point.time),
+        });
+      }
+      rows.get(point.time)![`m_${model.idx}`] = point.probability;
+    }
+  }
 
-  return (
-    <div className="chart-tooltip">
-      <p className="text-xs text-zinc-400 mb-1">{formatTooltipTime(data.timestamp)}</p>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-xs text-emerald-400 font-mono font-semibold">
-            YES {(data.yesPrice * 100).toFixed(1)}%
-          </span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-red-400" />
-          <span className="text-xs text-red-400 font-mono font-semibold">
-            NO {(data.noPrice * 100).toFixed(1)}%
-          </span>
-        </div>
-      </div>
-    </div>
+  return Array.from(rows.values()).sort(
+    (left, right) =>
+      new Date(String(left.time)).getTime() - new Date(String(right.time)).getTime()
   );
 }
 
-export default function FeaturedMarketHero() {
-  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-  const [liveOdds, setLiveOdds] = useState<{ yes: number; no: number } | null>(null);
-  const [chartLoading, setChartLoading] = useState(true);
-
-  const activeMarket = useMemo(() => getActiveMarket(), []);
-  const fallbackMarket = useMemo(() => getMostRecentSettledMarket(), []);
-  const market = activeMarket || fallbackMarket;
-  const isActive = !!activeMarket;
-
-  // Current odds from live data (1h endpoint with 60s candles)
-  const currentOdds = useMemo(() => {
-    if (liveOdds) return liveOdds;
-    if (chartData.length === 0) return { yes: 50, no: 50 };
-    const latest = chartData[chartData.length - 1];
-    return {
-      yes: Math.round(latest.yesPrice * 1000) / 10,
-      no: Math.round(latest.noPrice * 1000) / 10,
-    };
-  }, [liveOdds, chartData]);
-
-  function parseChartPoints(data: DelphiChartResponse): ChartDataPoint[] {
-    if (!data.data_points) return [];
-    return data.data_points.map((dp) => {
-      // Chart API: entry_idx "0" = YES, entry_idx "1" = NO
-      // (reversed from market config where idx 0 = NO, idx 1 = YES)
-      const yesEntry = dp.entries.find((e) => e.entry_idx === "0");
-      const noEntry = dp.entries.find((e) => e.entry_idx === "1");
-      return {
-        timestamp: dp.timestamp,
-        yesPrice: parseFloat(yesEntry?.price || "0.5"),
-        noPrice: parseFloat(noEntry?.price || "0.5"),
-        label: formatTimestamp(dp.timestamp),
-      };
-    });
-  }
+export default function FeaturedMarketHero({ market }: FeaturedMarketHeroProps) {
+  const [marketDetail, setMarketDetail] = useState<MarketDetailResponse | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!market) return;
-
-    async function fetchData() {
-      try {
-        // Fetch both: 1h (60s candles) for live odds, auto/3d for full chart
-        const [liveRes, chartRes] = await Promise.all([
-          fetch(`/api/markets/${market!.internalId}/chart?timeframe=1h`),
-          fetch(`/api/markets/${market!.internalId}/chart?timeframe=auto`),
-        ]);
-
-        const [liveData, chartData]: [DelphiChartResponse, DelphiChartResponse] =
-          await Promise.all([liveRes.json(), chartRes.json()]);
-
-        // Live odds from the latest 60s candle
-        if (liveData.data_points?.length) {
-          const latest = liveData.data_points[liveData.data_points.length - 1];
-          const yesEntry = latest.entries.find((e) => e.entry_idx === "0");
-          const noEntry = latest.entries.find((e) => e.entry_idx === "1");
-          setLiveOdds({
-            yes: Math.round(parseFloat(yesEntry?.price || "0.5") * 1000) / 10,
-            no: Math.round(parseFloat(noEntry?.price || "0.5") * 1000) / 10,
-          });
-        }
-
-        // Chart data from 1d (hourly candles)
-        const points = parseChartPoints(chartData);
-        if (points.length) setChartData(points);
-      } catch (e) {
-        console.error("Failed to fetch market data:", e);
-      } finally {
-        setChartLoading(false);
-      }
+    if (!market) {
+      return;
     }
 
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    let active = true;
+
+    const fetchMarketDetail = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/markets/${market.internalId}`);
+        const json = await res.json();
+        if (!active || !res.ok || json.error) {
+          return;
+        }
+        setMarketDetail(json);
+      } catch (error) {
+        console.error("Failed to fetch featured market detail:", error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchMarketDetail();
+    const interval = window.setInterval(fetchMarketDetail, 30000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, [market]);
+
+  const models = useMemo(() => {
+    if (!market) {
+      return [];
+    }
+
+    const detailedModels = parseModelsJson(marketDetail?.market.modelsJson).map((model) => ({
+      idx: model.idx,
+      name: model.modelName || model.fullName || `Model ${model.idx}`,
+      family: model.familyName || "",
+    }));
+
+    return detailedModels.length > 0 ? detailedModels : market.models;
+  }, [market, marketDetail?.market.modelsJson]);
+
+  const isSettled =
+    marketDetail?.market.status === 2 || market?.status === "settled";
+  const winnerIdx =
+    marketDetail?.market.winningModelIdx !== null &&
+    marketDetail?.market.winningModelIdx !== undefined
+      ? Number(marketDetail.market.winningModelIdx)
+      : market?.winnerIdx;
+  const marketTitle = marketDetail?.market.title || market?.title || "Market";
+  const effectiveEndTime = marketDetail?.market.endTime || market?.endTime?.toString() || null;
+  const latestProbabilityMap = new Map(
+    (marketDetail?.latestPrices || []).map((price) => [price.modelIdx, price.probability])
+  );
+
+  const entrySnapshots = useMemo<EntrySnapshot[]>(() => {
+    return models
+      .map((model, index) => {
+        const rawProbability = latestProbabilityMap.get(String(model.idx)) ?? null;
+        const resolvedProbability =
+          isSettled && winnerIdx !== undefined ? (winnerIdx === model.idx ? 100 : 0) : rawProbability ?? 0;
+        return {
+          idx: model.idx,
+          name: model.name,
+          family: model.family,
+          probability: resolvedProbability,
+          isWinner: winnerIdx === model.idx,
+          color: MODEL_COLORS[index % MODEL_COLORS.length],
+        };
+      })
+      .sort((left, right) => {
+        if (left.isWinner !== right.isWinner) {
+          return left.isWinner ? -1 : 1;
+        }
+        return right.probability - left.probability;
+      });
+  }, [isSettled, latestProbabilityMap, models, winnerIdx]);
+
+  const isOutcome =
+    market?.type === "outcome" ||
+    (entrySnapshots.length === 2 &&
+      entrySnapshots.some((entry) => entry.name.toUpperCase() === "YES") &&
+      entrySnapshots.some((entry) => entry.name.toUpperCase() === "NO"));
+
+  const yesEntry = entrySnapshots.find((entry) => entry.name.toUpperCase() === "YES");
+  const noEntry = entrySnapshots.find((entry) => entry.name.toUpperCase() === "NO");
+  const chartModels = isOutcome ? entrySnapshots.slice(0, 2) : entrySnapshots.slice(0, 4);
+  const chartRows = buildChartRows(chartModels, marketDetail?.priceHistory || {});
+  const leadingEntry = entrySnapshots[0];
+  const winnerEntry = entrySnapshots.find((entry) => entry.isWinner) || leadingEntry;
 
   if (!market) {
     return (
-      <div className="text-center py-20">
-        <p className="text-zinc-500">No markets available</p>
+      <div className="py-10 sm:py-16">
+        <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.14em] text-cyan-300">
+          <span className="h-2 w-2 rounded-full bg-cyan-400" />
+          Market standby
+        </div>
+        <h2 className="mb-4 text-2xl font-bold leading-tight text-white sm:text-3xl">
+          New market will be announced soon
+        </h2>
+        <p className="mx-auto max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
+          There is no live Delphi market right now. As soon as the next market is created and the
+          indexer picks it up, this panel will automatically switch to live pricing, trade flow,
+          and recent transactions.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <a
+            href="https://delphi.gensyn.ai"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-violet-500 hover:shadow-lg hover:shadow-violet-500/25"
+          >
+            Open Official Delphi
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          </a>
+          <Link
+            href="/markets"
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-zinc-700"
+          >
+            Browse Market Archive
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </Link>
+        </div>
       </div>
     );
   }
-
-  const winnerModel =
-    !isActive && market.winnerIdx !== undefined
-      ? market.models.find((m) => m.idx === market.winnerIdx)
-      : null;
 
   return (
     <motion.div
@@ -193,273 +247,193 @@ export default function FeaturedMarketHero() {
       transition={{ duration: 0.6 }}
       className="hero-card"
     >
-      {/* Status + Market ID header */}
-      <div className="flex items-center justify-between mb-5">
+      <div className="mb-5 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase ${
-              isActive ? "badge-active" : "badge-settled"
+            className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+              isSettled ? "badge-settled" : "badge-active"
             }`}
           >
-            {isActive ? "🟢 Live" : "Settled"}
+            {isSettled ? "Settled" : "Live"}
           </span>
-          <span className="text-sm text-zinc-500 font-mono">
-            Market #{market.displayId}
-          </span>
+          <span className="font-mono text-sm text-zinc-500">Market #{market.displayId}</span>
         </div>
-        {isActive && market.endTimestamp && (
+        {!isSettled && effectiveEndTime && (
           <div className="hidden sm:block">
-            <CountdownTimer
-              endTimestamp={market.endTimestamp}
-              label="Ends in"
-            />
+            <CountdownTimer endTimestamp={effectiveEndTime} label="Ends in" />
           </div>
         )}
       </div>
 
-      {/* Market Question */}
-      <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mb-6 leading-tight">
-        {market.title}
+      <h2 className="mb-6 text-xl font-bold leading-tight text-white sm:text-2xl lg:text-3xl">
+        {marketTitle}
       </h2>
 
-      {/* Mobile countdown */}
-      {isActive && market.endTimestamp && (
-        <div className="sm:hidden mb-5 p-3 rounded-xl bg-zinc-800/50 border border-zinc-700/50 inline-block">
-          <CountdownTimer endTimestamp={market.endTimestamp} label="Ends in" />
+      {!isSettled && effectiveEndTime && (
+        <div className="mb-5 inline-block rounded-xl border border-zinc-700/50 bg-zinc-800/50 p-3 sm:hidden">
+          <CountdownTimer endTimestamp={effectiveEndTime} label="Ends in" />
         </div>
       )}
 
-      {/* Odds Display */}
-      <div className="mb-6">
-        {isActive ? (
-          <>
-            <div className="flex items-center gap-2 mb-3">
-              <p className="text-xs text-zinc-500 uppercase tracking-wider font-medium">
-                Current Odds
-              </p>
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-emerald-400/80 font-medium">Updates every ~1 min</span>
-              </div>
-            </div>
-            <div className="flex gap-3 mb-4">
-              {/* YES pill */}
-              <div className="odds-pill odds-pill-yes flex-1">
-                <span className="text-xs text-emerald-400/70 uppercase tracking-wider font-medium">
-                  Yes
-                </span>
-                <span className="text-3xl sm:text-4xl font-bold font-mono text-emerald-400">
-                  {currentOdds.yes}
-                  <span className="text-lg">%</span>
-                </span>
-              </div>
-              {/* NO pill */}
-              <div className="odds-pill odds-pill-no flex-1">
-                <span className="text-xs text-red-400/70 uppercase tracking-wider font-medium">
-                  No
-                </span>
-                <span className="text-3xl sm:text-4xl font-bold font-mono text-red-400">
-                  {currentOdds.no}
-                  <span className="text-lg">%</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Odds bar */}
-            <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
-              <motion.div
-                className="h-full rounded-full"
-                style={{
-                  background: `linear-gradient(90deg, #10b981 0%, #10b981 ${currentOdds.yes}%, #ef4444 ${currentOdds.yes}%, #ef4444 100%)`,
-                }}
-                initial={{ width: 0 }}
-                animate={{ width: "100%" }}
-                transition={{ duration: 1, ease: "easeOut" }}
-              />
-            </div>
-          </>
-        ) : (
-          /* Settled market: show winner */
-          <>
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 font-medium">
-              Result
+      {isSettled ? (
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <p className="mb-1 text-xs uppercase tracking-wider text-amber-400/70">
+            Final Result
+          </p>
+          <p className="text-2xl font-bold text-amber-300">
+            {winnerEntry?.name || "Winner not available"}
+          </p>
+        </div>
+      ) : isOutcome && yesEntry && noEntry ? (
+        <div className="mb-6">
+          <div className="mb-3 flex items-center gap-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              Current Odds
             </p>
-            {winnerModel && (
-              <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">🏆</span>
-                  <div>
-                    <p className="text-xs text-amber-400/70 mb-0.5">
-                      Winning Outcome
-                    </p>
-                    <p className="text-2xl font-bold text-amber-300">
-                      {winnerModel.name}
-                    </p>
-                  </div>
+            <div className="flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              <span className="text-[10px] font-medium text-emerald-400/80">Live market feed</span>
+            </div>
+          </div>
+          <div className="mb-4 flex gap-3">
+            {[yesEntry, noEntry].map((entry) => {
+              const tone =
+                entry.name.toUpperCase() === "YES"
+                  ? "odds-pill odds-pill-yes text-emerald-400"
+                  : "odds-pill odds-pill-no text-red-400";
+              return (
+                <div key={entry.idx} className={`${tone} flex-1`}>
+                  <span className="text-xs font-medium uppercase tracking-wider text-current/70">
+                    {entry.name}
+                  </span>
+                  <span className="font-mono text-3xl font-bold sm:text-4xl">
+                    {entry.probability.toFixed(1)}
+                    <span className="text-lg">%</span>
+                  </span>
                 </div>
-              </div>
+              );
+            })}
+          </div>
+          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+            <motion.div
+              className="h-full rounded-full"
+              style={{
+                background: `linear-gradient(90deg, #10b981 0%, #10b981 ${yesEntry.probability}%, #ef4444 ${yesEntry.probability}%, #ef4444 100%)`,
+              }}
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ duration: 1, ease: "easeOut" }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mb-6">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+              Leading models
+            </p>
+            {leadingEntry && (
+              <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[10px] font-medium text-cyan-300">
+                Leader: {leadingEntry.family || leadingEntry.name}
+              </span>
             )}
-          </>
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {entrySnapshots.slice(0, 3).map((entry) => (
+              <div
+                key={entry.idx}
+                className="rounded-xl border border-zinc-700/40 bg-zinc-900/55 p-4"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: entry.color }}
+                  />
+                  <span className="text-xs uppercase tracking-wider text-zinc-500">
+                    {entry.family || `Model ${entry.idx}`}
+                  </span>
+                </div>
+                <p className="truncate text-sm font-semibold text-white">{entry.name}</p>
+                <p className="mt-3 font-mono text-2xl font-bold text-cyan-300">
+                  {entry.probability.toFixed(1)}%
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mb-6 rounded-xl border border-zinc-700/30 bg-zinc-900/60 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              Price History
+            </p>
+            <p className="text-xs text-zinc-500">
+              {isOutcome ? "YES/NO pricing" : "Live model pricing"} across the latest indexed window
+            </p>
+          </div>
+          {loading && (
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+          )}
+        </div>
+
+        {chartRows.length > 0 ? (
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={chartRows}>
+              <CartesianGrid stroke="rgba(63,63,70,0.28)" strokeDasharray="3 3" />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 10, fill: "#71717a" }}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                domain={[0, 100]}
+                tickFormatter={(value) => `${value}%`}
+                tick={{ fontSize: 10, fill: "#71717a" }}
+                tickLine={false}
+                axisLine={false}
+                width={42}
+              />
+              <Tooltip
+                contentStyle={{
+                  background: "rgba(24,24,27,0.95)",
+                  border: "1px solid rgba(63,63,70,0.5)",
+                  borderRadius: "8px",
+                  fontSize: "12px",
+                }}
+              />
+              {chartModels.map((entry) => (
+                <Line
+                  key={entry.idx}
+                  type="monotone"
+                  dataKey={`m_${entry.idx}`}
+                  stroke={entry.color}
+                  strokeWidth={entry.isWinner ? 3 : 2}
+                  dot={false}
+                  connectNulls
+                  animationDuration={900}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex h-[220px] items-center justify-center text-sm text-zinc-500">
+            Waiting for live price history...
+          </div>
         )}
       </div>
 
-      {/* Two separate charts — YES and NO side by side (matching pill order) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        {/* YES Chart (left, under YES pill) */}
-        <div className="rounded-xl bg-zinc-900/60 border border-zinc-700/30 p-3 sm:p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">YES Price</span>
-            </div>
-            <span className="text-sm font-mono font-bold text-emerald-400">
-              {currentOdds.yes}%
-            </span>
-          </div>
-          {chartLoading ? (
-            <div className="w-full flex items-center justify-center" style={{ height: 180 }}>
-              <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="yesGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#34d399" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#34d399" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatTimestamp}
-                  tick={{ fontSize: 10, fill: "#3f3f46" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  domain={[0, 1]}
-                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                  tick={{ fontSize: 10, fill: "#3f3f46" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "rgba(24,24,27,0.95)",
-                    border: "1px solid rgba(63,63,70,0.5)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                  labelFormatter={(ts: number) => formatTimestamp(ts)}
-                  formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, "YES"]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="yesPrice"
-                  stroke="#34d399"
-                  strokeWidth={2}
-                  fill="url(#yesGrad)"
-                  dot={false}
-                  animationDuration={1000}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 180 }}>
-              No data
-            </div>
-          )}
-        </div>
-
-        {/* NO Chart (right, under NO pill) */}
-        <div className="rounded-xl bg-zinc-900/60 border border-zinc-700/30 p-3 sm:p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-red-400" />
-              <span className="text-xs text-zinc-400 font-semibold uppercase tracking-wider">NO Price</span>
-            </div>
-            <span className="text-sm font-mono font-bold text-red-400">
-              {currentOdds.no}%
-            </span>
-          </div>
-          {chartLoading ? (
-            <div className="w-full flex items-center justify-center" style={{ height: 180 }}>
-              <div className="w-5 h-5 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : chartData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id="noGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f87171" stopOpacity={0.3} />
-                    <stop offset="100%" stopColor="#f87171" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis
-                  dataKey="timestamp"
-                  tickFormatter={formatTimestamp}
-                  tick={{ fontSize: 10, fill: "#3f3f46" }}
-                  axisLine={false}
-                  tickLine={false}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  domain={[0, 1]}
-                  tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
-                  tick={{ fontSize: 10, fill: "#3f3f46" }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={36}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: "rgba(24,24,27,0.95)",
-                    border: "1px solid rgba(63,63,70,0.5)",
-                    borderRadius: "8px",
-                    fontSize: "12px",
-                  }}
-                  labelFormatter={(ts: number) => formatTimestamp(ts)}
-                  formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, "NO"]}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="noPrice"
-                  stroke="#f87171"
-                  strokeWidth={2}
-                  fill="url(#noGrad)"
-                  dot={false}
-                  animationDuration={1000}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full flex items-center justify-center text-zinc-600 text-sm" style={{ height: 180 }}>
-              No data
-            </div>
-          )}
-        </div>
-      </div>
-      <p className="text-[10px] text-zinc-600 text-center -mt-4 mb-6">
-        Implied pricing · Last 3 days · Updates every ~1 min
-      </p>
-
-      {/* CTAs */}
       <div className="flex flex-wrap gap-3">
         <a
           href={`https://delphi.gensyn.ai/market/${market.internalId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold transition-all hover:scale-[1.03] hover:shadow-lg hover:shadow-violet-500/25"
+          className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-violet-500 hover:shadow-lg hover:shadow-violet-500/25"
         >
           Trade Now
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -470,15 +444,10 @@ export default function FeaturedMarketHero() {
         </a>
         <Link
           href={`/markets/${market.internalId}`}
-          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold transition-all hover:scale-[1.03] border border-zinc-700"
+          className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-zinc-700"
         >
           View Details
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"

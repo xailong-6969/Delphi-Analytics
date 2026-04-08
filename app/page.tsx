@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { formatAddress, formatNumber, formatTimeAgo, formatTokens } from "@/lib/utils";
-import { MARKETS, MarketConfig } from "@/lib/markets-config";
 import FeaturedMarketHero from "@/components/FeaturedMarketHero";
 import ScrollReveal, {
   StaggerContainer,
   StaggerItem,
 } from "@/components/ScrollReveal";
+import type { LiveMarketSummary } from "@/lib/live-markets";
 
 interface HomeData {
   totalTrades: number;
@@ -31,6 +31,14 @@ interface HomeData {
     modelIdx: string;
     impliedProbability: number;
   }>;
+}
+
+interface MarketsResponse {
+  markets: LiveMarketSummary[];
+}
+
+function formatMarketChipDate(market: LiveMarketSummary): string {
+  return market.dateLabel || (market.status === "active" ? "Live market" : "Resolved");
 }
 
 function renderFeatureIcon(kind: "pulse" | "wallet" | "archive" | "chain") {
@@ -97,35 +105,46 @@ function renderFeatureIcon(kind: "pulse" | "wallet" | "archive" | "chain") {
 
 export default function HomePage() {
   const [data, setData] = useState<HomeData | null>(null);
+  const [liveMarkets, setLiveMarkets] = useState<LiveMarketSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchData() {
+    async function fetchDashboardData() {
       try {
-        const res = await fetch("/api/stats");
-        const json = await res.json();
-        if (!json.error) {
-          setData(json);
+        const [statsRes, marketsRes] = await Promise.all([
+          fetch("/api/stats"),
+          fetch("/api/markets"),
+        ]);
+        const [statsJson, marketsJson]: [HomeData, MarketsResponse] = await Promise.all([
+          statsRes.json(),
+          marketsRes.json(),
+        ]);
+
+        if (!(statsJson as any).error) {
+          setData(statsJson);
+        }
+        if (!(marketsJson as any).error) {
+          setLiveMarkets(marketsJson.markets || []);
         }
       } catch (error) {
-        console.error("Failed to fetch stats:", error);
+        console.error("Failed to fetch dashboard data:", error);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchData();
-    const interval = window.setInterval(fetchData, 30000);
+    fetchDashboardData();
+    const interval = window.setInterval(fetchDashboardData, 30000);
     return () => window.clearInterval(interval);
   }, []);
 
-  const getDisplayMarketId = (internalId: string): string => {
-    const config = MARKETS[internalId];
-    return config?.displayId || internalId;
-  };
-
-  const sortedMarkets = (Object.entries(MARKETS) as [string, MarketConfig][])
-    .sort((a, b) => Number(b[1].displayId) - Number(a[1].displayId));
+  const sortedMarkets = [...liveMarkets].sort(
+    (left, right) => Number(right.internalId) - Number(left.internalId)
+  );
+  const featuredMarket = liveMarkets.find((market) => market.status === "active") || null;
+  const marketDisplayMap = new Map(
+    liveMarkets.map((market) => [market.internalId, market.displayId])
+  );
 
   const heroProofCards = [
     {
@@ -145,6 +164,49 @@ export default function HomePage() {
       value: String(data?.activeMarkets ?? 0),
       caption: "Current Delphi flow",
       accent: "accent-gold",
+    },
+  ];
+
+  const heroSystemItems = [
+    {
+      label: data?.lastIndexedAt ? "Indexer synced" : "Indexer waiting",
+      value: data?.lastIndexedAt ? formatTimeAgo(data.lastIndexedAt) : "Awaiting first sync",
+      tone: "system-cyan",
+    },
+    {
+      label: featuredMarket ? "Live market" : "Market standby",
+      value: featuredMarket ? `Market #${featuredMarket.displayId} open` : "No live market",
+      tone: featuredMarket ? "system-emerald" : "system-gold",
+    },
+    {
+      label: featuredMarket ? "Tracking Delphi" : "Watching Delphi",
+      value: featuredMarket
+        ? "Transactions and pricing update automatically"
+        : "Ready for the next official launch",
+      tone: "system-violet",
+    },
+  ];
+
+  const heroWatchCards = [
+    {
+      label: "Indexer freshness",
+      value: data?.lastIndexedAt ? formatTimeAgo(data.lastIndexedAt) : "Waiting",
+      caption: data?.lastIndexedBlock ? `Block ${data.lastIndexedBlock}` : "Awaiting sync",
+      accent: "accent-cyan",
+    },
+    {
+      label: featuredMarket ? "Live market" : "Market status",
+      value: featuredMarket ? `#${featuredMarket.displayId}` : "Standby",
+      caption: featuredMarket
+        ? "Homepage switches with live Delphi activity"
+        : "The next market will appear here automatically",
+      accent: "accent-gold",
+    },
+    {
+      label: "Archive depth",
+      value: String(data?.settledMarkets ?? 0),
+      caption: `${formatNumber(data?.totalTrades ?? 0, 0)} indexed trades`,
+      accent: "accent-emerald",
     },
   ];
 
@@ -218,7 +280,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="page-shell mx-auto flex min-h-[70vh] max-w-7xl items-center justify-center px-4 py-8">
+      <div className="page-shell mx-auto flex min-h-[70vh] max-w-[92rem] items-center justify-center px-4 py-8">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 18 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -235,7 +297,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="page-shell mx-auto max-w-7xl px-4 py-8 space-y-10">
+    <div className="page-shell home-page-shell mx-auto max-w-[92rem] px-4 py-8 space-y-10">
       <section className="home-command-hero">
         <motion.div
           className="home-command-copy"
@@ -249,13 +311,25 @@ export default function HomePage() {
           </p>
           <h1 className="home-command-title">
             Track market conviction, wallet behavior, and resolution history in one
-            <span className="gradient-text-luxury"> cinematic dashboard.</span>
+            <span className="gradient-text-luxury"> live dashboard.</span>
           </h1>
           <p className="home-command-description">
             Delphi Analytics turns live Gensyn testnet activity into a cleaner statistics
             interface: featured market tracking, ranked trader analytics, and sharper market
-            browsing that feels closer to a premium terminal than a plain stats page.
+            browsing that updates itself as Delphi activity changes.
           </p>
+
+          <div className="home-system-strip" aria-label="Live system status">
+            {heroSystemItems.map((item) => (
+              <div key={item.label} className={`home-system-chip ${item.tone}`}>
+                <span className="home-system-dot" aria-hidden="true" />
+                <div className="home-system-copy">
+                  <span className="home-system-label">{item.label}</span>
+                  <span className="home-system-value">{item.value}</span>
+                </div>
+              </div>
+            ))}
+          </div>
 
           <div className="home-command-actions">
             <Link href="/markets" className="premium-button-primary">
@@ -272,18 +346,6 @@ export default function HomePage() {
             >
               Trade on Delphi
             </a>
-          </div>
-
-          <div className="home-insight-row">
-            {[
-              "Live market pulse",
-              "Wallet P&L analytics",
-              "Resolved market archive",
-            ].map((item) => (
-              <span key={item} className="home-insight-chip">
-                {item}
-              </span>
-            ))}
           </div>
 
           <StaggerContainer className="home-proof-grid" staggerDelay={0.1}>
@@ -309,10 +371,62 @@ export default function HomePage() {
             <div className="home-stage-orbit orbit-one" aria-hidden="true" />
             <div className="home-stage-orbit orbit-two" aria-hidden="true" />
             <div className="home-stage-tag">
-              <span className="home-stage-tag-label">Featured Market</span>
-              <span className="home-stage-tag-value">Featured market in Delphi</span>
+              <span className="home-stage-tag-label">
+                {featuredMarket ? "Featured Market" : "Market Watch"}
+              </span>
+              <span className="home-stage-tag-value">
+                {featuredMarket
+                  ? `Live market #${featuredMarket.displayId} in Delphi`
+                  : "New market will be announced soon"}
+              </span>
             </div>
-            <FeaturedMarketHero />
+            <FeaturedMarketHero market={featuredMarket} />
+          </div>
+
+          <div className="home-stage-support">
+            <div className="home-stage-support-header">
+              <div>
+                <span className="page-eyebrow">Delphi Watch</span>
+                <h3 className="home-stage-support-title">
+                  {featuredMarket
+                    ? "Live market coverage stays in sync with Delphi."
+                    : "Waiting for Delphi to open the next market."}
+                </h3>
+              </div>
+              <a
+                href="https://delphi.gensyn.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="home-stage-support-link"
+              >
+                Official Delphi
+              </a>
+            </div>
+
+            <p className="home-stage-support-description">
+              {featuredMarket
+                ? "This panel refreshes from indexed Delphi activity, so live trades, pricing, and the market detail view update without manual edits."
+                : "Until the next live market appears, this space stays on watch and then flips automatically into live pricing and transaction flow as soon as Delphi launches it."}
+            </p>
+
+            <div className="home-stage-support-grid">
+              {heroWatchCards.map((card) => (
+                <div key={card.label} className={`home-stage-support-card ${card.accent}`}>
+                  <p className="home-stage-support-label">{card.label}</p>
+                  <p className="home-stage-support-value">{card.value}</p>
+                  <p className="home-stage-support-caption">{card.caption}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="home-stage-support-actions">
+              <Link
+                href={featuredMarket ? `/markets/${featuredMarket.internalId}` : "/markets"}
+                className="home-stage-support-button"
+              >
+                {featuredMarket ? "Open Live Market" : "Browse Market Archive"}
+              </Link>
+            </div>
           </div>
         </motion.div>
       </section>
@@ -381,7 +495,7 @@ export default function HomePage() {
                 <tbody>
                   {data.recentTrades.slice(0, 8).map((trade, idx) => {
                     const internalId = trade.marketId.toString();
-                    const displayId = getDisplayMarketId(internalId);
+                    const displayId = marketDisplayMap.get(internalId) || internalId;
 
                     return (
                       <motion.tr
@@ -475,8 +589,8 @@ export default function HomePage() {
           </div>
 
           <StaggerContainer className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4" staggerDelay={0.06}>
-            {sortedMarkets.map(([id, market]) => (
-              <StaggerItem key={id}>
+            {sortedMarkets.map((market) => (
+              <StaggerItem key={market.internalId}>
                 <Link href={`/markets/${market.internalId}`} className="card market-preview-card p-5 block">
                   <div className="flex items-start justify-between gap-4 mb-4">
                     <div>
@@ -499,7 +613,7 @@ export default function HomePage() {
                   </div>
 
                   <div className="flex flex-wrap gap-2 mb-4">
-                    <span className="market-mini-chip">{market.endDate}</span>
+                    <span className="market-mini-chip">{formatMarketChipDate(market)}</span>
                     <span className="market-mini-chip">
                       {market.models.length} {market.type === "model" ? "models" : "outcomes"}
                     </span>

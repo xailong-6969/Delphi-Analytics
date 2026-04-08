@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAddress } from "viem";
-import { VALID_MARKET_IDS_BIGINT } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -35,13 +34,10 @@ export async function GET(
         );
     const skip = Number(url.searchParams.get("skip") || 0);
     const marketId = url.searchParams.get("marketId");
-    const trackedOnly = url.searchParams.get("trackedOnly") === "1";
 
     const where: any = { trader: address };
     if (marketId) {
       where.marketId = BigInt(marketId);
-    } else if (trackedOnly) {
-      where.marketId = { in: VALID_MARKET_IDS_BIGINT };
     }
 
     const [trades, total] = await Promise.all([

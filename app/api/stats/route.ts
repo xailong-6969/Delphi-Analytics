@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { VALID_MARKET_IDS_BIGINT } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -36,14 +35,12 @@ export async function GET() {
       prisma.market.count({
         where: {
           status: 0,
-          marketId: { in: VALID_MARKET_IDS_BIGINT }
         }
       }),
       // Settled markets count
       prisma.market.count({
         where: {
           status: 2,
-          marketId: { in: VALID_MARKET_IDS_BIGINT }
         }
       }),
       // Total trades count (fast)
@@ -75,7 +72,6 @@ export async function GET() {
       }),
       // Get total volume from ALL valid markets
       prisma.market.findMany({
-        where: { marketId: { in: VALID_MARKET_IDS_BIGINT } },
         select: { marketId: true, totalVolume: true, totalTrades: true }
       }),
       // Calculate 24h volume directly in database (more accurate)

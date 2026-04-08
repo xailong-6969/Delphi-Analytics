@@ -1,6 +1,5 @@
 import { createPublicClient, http, parseAbiItem, getAddress, type Log } from "viem";
 import { PrismaClient } from "@prisma/client";
-import { MARKET_WINNERS } from "../markets-config";
 
 // ============================================
 // CONFIGURATION
@@ -337,12 +336,24 @@ export async function runIndexer(
 }
 
 // ============================================
-// RECALCULATE STATS - with correct P&L calculation
-// Uses the shared MARKET_WINNERS map from markets-config.
+// RECALCULATE STATS - with settlement winners from the live market table
 // ============================================
 
 export async function recalculateTraderStats(prisma: PrismaClient): Promise<number> {
   const traders = await prisma.trade.findMany({ distinct: ['trader'], select: { trader: true } });
+  const settledMarkets = await prisma.market.findMany({
+    where: {
+      status: 2,
+      winningModelIdx: { not: null },
+    },
+    select: {
+      marketId: true,
+      winningModelIdx: true,
+    },
+  });
+  const winnerByMarketId = new Map(
+    settledMarkets.map((market) => [market.marketId.toString(), Number(market.winningModelIdx)])
+  );
   let updated = 0;
 
   for (const { trader } of traders) {
@@ -393,7 +404,7 @@ export async function recalculateTraderStats(prisma: PrismaClient): Promise<numb
     for (const [key, pos] of positions.entries()) {
       if (pos.shares > 0n) {
         const [marketIdStr, modelIdxStr] = key.split(':');
-        const winnerIdx = MARKET_WINNERS[marketIdStr];
+        const winnerIdx = winnerByMarketId.get(marketIdStr);
 
         if (winnerIdx !== undefined) {
           if (Number(modelIdxStr) === winnerIdx) {

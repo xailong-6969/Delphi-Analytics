@@ -1,5 +1,3 @@
-import { MARKET_WINNERS } from "@/lib/markets-config";
-
 const TOKEN_SCALE = 10n ** 18n;
 
 export interface TraderAnalyticsTrade {
@@ -65,7 +63,7 @@ function bigintToTokenNumber(value: bigint): number {
 
 export function analyzeTraderTrades(
   trades: TraderAnalyticsTrade[],
-  marketSettledAtById: Record<string, Date | null> = {}
+  settledMarketMetaById: Record<string, { winnerIdx: number; settledAt: Date | null }> = {}
 ): TraderAnalyticsSummary {
   if (trades.length === 0) {
     return {
@@ -171,21 +169,21 @@ export function analyzeTraderTrades(
     }
 
     const [marketId, modelIdx] = positionKey.split(":");
-    const winnerIdx = MARKET_WINNERS[marketId];
+    const settledMarket = settledMarketMetaById[marketId];
 
-    if (winnerIdx === undefined) {
+    if (!settledMarket) {
       openPositions += 1;
       unrealizedCostBasis += position.cost;
       continue;
     }
 
     const settlementDelta =
-      Number(modelIdx) === winnerIdx ? position.shares - position.cost : -position.cost;
+      Number(modelIdx) === settledMarket.winnerIdx ? position.shares - position.cost : -position.cost;
 
     realizedPnl += settlementDelta;
 
     events.push({
-      time: marketSettledAtById[marketId] || position.lastTradeTime,
+      time: settledMarket.settledAt || position.lastTradeTime,
       pnlDelta: settlementDelta,
       volume: 0n,
       kind: "settlement",
