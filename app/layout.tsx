@@ -4,7 +4,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PageTransitionProvider from "@/components/PageTransitionProvider";
 import LiveTicker from "@/components/LiveTicker";
-import { ShaderAnimation } from "@/components/ui/shader-animation";
+import { DottedSurface } from "@/components/ui/dotted-surface";
 
 export const metadata: Metadata = {
   title: "Delphi Analytics | Gensyn Testnet",
@@ -27,8 +27,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="app-background-aurora app-background-aurora-cyan" />
           <div className="app-background-aurora app-background-aurora-emerald" />
           <div className="app-background-grid" />
-          <div className="app-background-shader">
-            <ShaderAnimation />
+          <div className="app-background-stage">
+            <div className="app-background-surface">
+              <DottedSurface />
+            </div>
           </div>
           <div className="app-background-vignette" />
         </div>

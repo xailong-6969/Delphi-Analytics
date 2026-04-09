@@ -231,6 +231,9 @@ body::after {
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
+  background:
+    radial-gradient(circle at top center, rgba(37, 99, 235, 0.08), transparent 30%),
+    linear-gradient(180deg, rgba(3, 5, 11, 0.98), rgba(3, 5, 11, 0.98));
 }
 
 .app-background-aurora {
@@ -282,22 +285,73 @@ body::after {
   -webkit-mask-image: radial-gradient(circle at center, black 56%, transparent 100%);
 }
 
-.app-background-shader {
+.app-background-stage {
   position: absolute;
-  inset: -6%;
-  opacity: 0.84;
-  mask-image: linear-gradient(180deg, transparent 0%, black 4%, black 96%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 4%, black 96%, transparent 100%);
-  filter: saturate(0.88) brightness(0.88) blur(2px);
-  transform: scale(1.04);
+  top: 5.8rem;
+  bottom: 1.75rem;
+  left: 50%;
+  width: min(92vw, 96rem);
+  transform: translateX(-50%);
+  border-radius: 2rem;
+  overflow: hidden;
+  border: 1px solid rgba(160, 185, 255, 0.12);
+  box-shadow:
+    0 40px 120px rgba(0, 0, 0, 0.46),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 18%),
+    linear-gradient(145deg, rgba(7, 12, 22, 0.7), rgba(6, 9, 16, 0.36));
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app-background-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(103, 232, 249, 0.22),
+    rgba(255, 255, 255, 0.04) 24%,
+    rgba(96, 165, 250, 0.2) 54%,
+    rgba(246, 201, 120, 0.18) 82%,
+    rgba(255, 255, 255, 0.04)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.app-background-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 255, 255, 0.06), transparent 18%),
+    linear-gradient(90deg, rgba(4, 6, 11, 0.08), transparent 14%, transparent 86%, rgba(4, 6, 11, 0.08));
+  pointer-events: none;
+}
+
+.app-background-surface {
+  position: absolute;
+  inset: 0;
+  opacity: 0.9;
+  filter: saturate(0.98) brightness(0.8) contrast(1.04);
+  mask-image: linear-gradient(180deg, transparent 0%, black 4%, black 97%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 4%, black 97%, transparent 100%);
 }
 
 .app-background-vignette {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, transparent 52%, rgba(9, 9, 13, 0.08) 78%, rgba(9, 9, 13, 0.42) 100%),
-    linear-gradient(180deg, rgba(9, 9, 13, 0.04), rgba(9, 9, 13, 0.18));
+    radial-gradient(circle at center, transparent 56%, rgba(9, 9, 13, 0.08) 80%, rgba(9, 9, 13, 0.52) 100%),
+    linear-gradient(180deg, rgba(9, 9, 13, 0.05), rgba(9, 9, 13, 0.22));
 }
 
 @keyframes aurora-drift {
@@ -309,6 +363,15 @@ body::after {
   }
   100% {
     transform: translate3d(-2%, 2%, 0) scale(0.98);
+  }
+}
+
+@media (max-width: 1024px) {
+  .app-background-stage {
+    top: 5.5rem;
+    bottom: 1rem;
+    width: min(96vw, 96rem);
+    border-radius: 1.6rem;
   }
 }
 
@@ -2138,6 +2201,13 @@ header a:first-of-type:hover img {
 }
 
 @media (max-width: 768px) {
+  .app-background-stage {
+    top: 5rem;
+    bottom: 0.75rem;
+    width: 98vw;
+    border-radius: 1.15rem;
+  }
+
   .home-command-hero,
   .home-proof-grid,
   .home-signal-grid {
