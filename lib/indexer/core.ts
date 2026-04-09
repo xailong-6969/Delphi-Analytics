@@ -68,9 +68,87 @@ async function fetchMarketConfig(configUri: string): Promise<{
   title?: string;
   description?: string;
   category?: string;
+  endTime?: Date;
   models?: Array<{ idx: number; familyName: string; modelName: string }>;
 } | null> {
   if (!configUri) return null;
+
+  const parseConfigEndTime = (value: unknown): Date | undefined => {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      const ms = value > 1e12 ? value : value * 1000;
+      const parsed = new Date(ms);
+      return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      if (!trimmed) {
+        return undefined;
+      }
+
+      if (/^\d+$/.test(trimmed)) {
+        return parseConfigEndTime(Number(trimmed));
+      }
+
+      const parsed = new Date(trimmed);
+      return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+    }
+
+    return undefined;
+  };
+
+  const pickEndTime = (data: Record<string, unknown>): Date | undefined => {
+    const nestedMarket = typeof data.market === "object" && data.market !== null
+      ? (data.market as Record<string, unknown>)
+      : null;
+    const nestedTiming = typeof data.timing === "object" && data.timing !== null
+      ? (data.timing as Record<string, unknown>)
+      : null;
+
+    const candidates = [
+      data.endTime,
+      data.endTimestamp,
+      data.closeTime,
+      data.marketEndTime,
+      data.expiry,
+      data.expiration,
+      data.deadline,
+      nestedMarket?.endTime,
+      nestedMarket?.endTimestamp,
+      nestedMarket?.closeTime,
+      nestedTiming?.endTime,
+      nestedTiming?.endTimestamp,
+      nestedTiming?.deadline,
+    ];
+
+    for (const candidate of candidates) {
+      const parsed = parseConfigEndTime(candidate);
+      if (parsed) {
+        return parsed;
+      }
+    }
+
+    return undefined;
+  };
+
+  const toConfigPayload = (data: Record<string, unknown>) => ({
+    title:
+      typeof data.title === "string"
+        ? data.title
+        : typeof data.name === "string"
+        ? data.name
+        : undefined,
+    description: typeof data.description === "string" ? data.description : undefined,
+    category: typeof data.category === "string" ? data.category : undefined,
+    endTime: pickEndTime(data),
+    models: (data.models || data.entries || data.options) as
+      | Array<{ idx: number; familyName: string; modelName: string }>
+      | undefined,
+  });
 
   try {
     let url = configUri;
@@ -91,12 +169,9 @@ async function fetchMarketConfig(configUri: string): Promise<{
           });
           if (response.ok) {
             const data = await response.json();
-            return {
-              title: data.title || data.name,
-              description: data.description,
-              category: data.category,
-              models: data.models || data.entries || data.options,
-            };
+            if (data && typeof data === "object" && !Array.isArray(data)) {
+              return toConfigPayload(data as Record<string, unknown>);
+            }
           }
         } catch {
           continue;
@@ -109,12 +184,9 @@ async function fetchMarketConfig(configUri: string): Promise<{
       });
       if (response.ok) {
         const data = await response.json();
-        return {
-          title: data.title || data.name,
-          description: data.description,
-          category: data.category,
-          models: data.models || data.entries || data.options,
-        };
+        if (data && typeof data === "object" && !Array.isArray(data)) {
+          return toConfigPayload(data as Record<string, unknown>);
+        }
       }
     }
   } catch (e) {
@@ -142,8 +214,30 @@ async function handleNewMarket(prisma: PrismaClient, log: Log, blockTime: Date) 
 
   await prisma.market.upsert({
     where: { marketId },
-    update: { configUri, configUriHash, title: config?.title, description: config?.description, modelsJson },
-    create: { marketId, configUri, configUriHash, createdAtBlock: BigInt(log.blockNumber!.toString()), createdAtTime: blockTime, title: config?.title, description: config?.description, modelsJson, status: 0 },
+    update: {
+      configUri,
+      configUriHash,
+      createdAtBlock: BigInt(log.blockNumber!.toString()),
+      createdAtTime: blockTime,
+      title: config?.title,
+      description: config?.description,
+      category: config?.category,
+      endTime: config?.endTime,
+      modelsJson,
+    },
+    create: {
+      marketId,
+      configUri,
+      configUriHash,
+      createdAtBlock: BigInt(log.blockNumber!.toString()),
+      createdAtTime: blockTime,
+      title: config?.title,
+      description: config?.description,
+      category: config?.category,
+      endTime: config?.endTime,
+      modelsJson,
+      status: 0,
+    },
   });
 }
 

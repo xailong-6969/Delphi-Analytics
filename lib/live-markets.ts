@@ -30,6 +30,8 @@ export interface LiveMarketSummary {
   isCurrentActive: boolean;
 }
 
+const UNKNOWN_ACTIVE_MAX_AGE_MS = 21 * 24 * 60 * 60 * 1000;
+
 type DbMarketRecord = {
   marketId: bigint;
   title: string | null;
@@ -84,28 +86,46 @@ function inferMarketType(models: LiveMarketModel[], fallback?: MarketConfig): "m
   return "model";
 }
 
-function isGenericTitle(title: string, internalId: string) {
-  return title.trim().toUpperCase() === `MARKET #${internalId}`;
+function hasCanonicalSource(summary: Pick<LiveMarketSummary, "internalId" | "configUri">) {
+  return Boolean(MARKETS[summary.internalId]) || Boolean(summary.configUri);
 }
 
-function hasRenderableMarketData(summary: Pick<
+function shouldDisplayMarket(summary: Pick<
   LiveMarketSummary,
-  "internalId" | "title" | "models" | "configUri" | "totalTrades" | "totalVolume"
+  "internalId" | "configUri" | "status" | "endTime" | "createdAt"
 >) {
-  if (summary.models.length > 0) return true;
-  if (summary.configUri) return true;
-  return !isGenericTitle(summary.title, summary.internalId);
+  if (MARKETS[summary.internalId]) {
+    return true;
+  }
+
+  if (!summary.configUri) {
+    return false;
+  }
+
+  if (summary.status === "settled") {
+    return true;
+  }
+
+  if (summary.endTime) {
+    return summary.endTime.getTime() > Date.now();
+  }
+
+  if (summary.createdAt) {
+    return Date.now() - summary.createdAt.getTime() <= UNKNOWN_ACTIVE_MAX_AGE_MS;
+  }
+
+  return false;
 }
 
 function isCurrentActiveMarket(summary: Pick<
   LiveMarketSummary,
-  "status" | "endTime" | "internalId" | "title" | "models" | "configUri" | "totalTrades" | "totalVolume"
+  "status" | "endTime" | "internalId" | "configUri" | "createdAt"
 >) {
   if (summary.status !== "active") {
     return false;
   }
 
-  if (!hasRenderableMarketData(summary)) {
+  if (!shouldDisplayMarket(summary)) {
     return false;
   }
 
@@ -244,9 +264,7 @@ export async function getLiveMarkets(prisma: PrismaClient): Promise<LiveMarketSu
     }
   }
 
-  const visibleSummaries = summaries.filter(
-    (market) => MARKETS[market.internalId] || hasRenderableMarketData(market)
-  );
+  const visibleSummaries = summaries.filter((market) => shouldDisplayMarket(market));
 
   visibleSummaries.sort((left, right) => Number(right.internalId) - Number(left.internalId));
   return visibleSummaries;
@@ -269,7 +287,7 @@ export async function getLiveMarketById(
 
   if (market) {
     const summary = toLiveMarketSummary(market);
-    return MARKETS[summary.internalId] || hasRenderableMarketData(summary) ? summary : null;
+    return shouldDisplayMarket(summary) ? summary : null;
   }
 
   const fallback = MARKETS[internalId];
