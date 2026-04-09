@@ -69,7 +69,7 @@ export function LiquidGlassSurface({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[rgba(14,18,28,0.26)] text-white shadow-[0_22px_60px_rgba(2,6,23,0.22)] backdrop-blur-[18px]",
+        "relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[rgba(14,18,28,0.24)] text-white shadow-[0_18px_44px_rgba(2,6,23,0.18)] backdrop-blur-[8px]",
         className
       )}
     >
@@ -78,9 +78,8 @@ export function LiquidGlassSurface({
         className="pointer-events-none absolute inset-0"
         style={{
           borderRadius: "inherit",
-          backdropFilter: "blur(10px) saturate(1.25)",
-          WebkitBackdropFilter: "blur(10px) saturate(1.25)",
-          filter: "url(#delphi-liquid-glass)",
+          backdropFilter: "blur(4px) saturate(1.08)",
+          WebkitBackdropFilter: "blur(4px) saturate(1.08)",
         }}
       />
       <div
@@ -116,17 +115,17 @@ export function LiquidGlassButton({
 }: LiquidGlassButtonProps) {
   const variantClass = {
     primary:
-      "border-[rgba(246,201,120,0.35)] bg-[linear-gradient(135deg,rgba(246,201,120,0.2),rgba(96,165,250,0.16))] text-white shadow-[0_18px_40px_rgba(96,165,250,0.18)]",
+      "border-[rgba(246,201,120,0.28)] bg-[linear-gradient(135deg,rgba(246,201,120,0.18),rgba(96,165,250,0.12))] text-white shadow-[0_14px_28px_rgba(96,165,250,0.14)]",
     secondary:
-      "border-white/12 bg-[rgba(255,255,255,0.04)] text-zinc-100 shadow-[0_18px_40px_rgba(2,6,23,0.14)]",
+      "border-white/12 bg-[rgba(255,255,255,0.035)] text-zinc-100 shadow-[0_14px_28px_rgba(2,6,23,0.12)]",
     ghost:
-      "border-cyan-400/20 bg-[rgba(103,232,249,0.04)] text-cyan-100 shadow-[0_18px_40px_rgba(2,6,23,0.12)]",
+      "border-cyan-400/18 bg-[rgba(103,232,249,0.035)] text-cyan-100 shadow-[0_14px_28px_rgba(2,6,23,0.1)]",
   }[variant];
 
   const content = (
     <LiquidGlassSurface
       className={cn(
-        "group rounded-full px-5 py-3 transition-all duration-300 hover:-translate-y-1 hover:border-white/20",
+        "group rounded-full px-5 py-3 transition-all duration-220 hover:-translate-y-0.5 hover:border-white/20",
         variantClass,
         className
       )}

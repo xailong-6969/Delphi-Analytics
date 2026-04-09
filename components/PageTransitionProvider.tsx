@@ -22,9 +22,7 @@ export default function PageTransitionProvider({ children }: PageTransitionProvi
             ? { opacity: 0 }
             : {
                 opacity: 0,
-                scale: 0.985,
-                y: 18,
-                filter: "blur(12px) saturate(0.92)",
+                y: 12,
               }
         }
         animate={
@@ -32,9 +30,7 @@ export default function PageTransitionProvider({ children }: PageTransitionProvi
             ? { opacity: 1 }
             : {
                 opacity: 1,
-                scale: 1,
                 y: 0,
-                filter: "blur(0px) saturate(1)",
               }
         }
         exit={
@@ -42,33 +38,19 @@ export default function PageTransitionProvider({ children }: PageTransitionProvi
             ? { opacity: 0 }
             : {
                 opacity: 0,
-                scale: 1.008,
-                y: -10,
-                filter: "blur(8px) saturate(0.95)",
+                y: -8,
               }
         }
         transition={
           reduceMotion
             ? { duration: 0.14 }
             : {
-                scale: {
-                  type: "spring",
-                  stiffness: 260,
-                  damping: 28,
-                  mass: 0.86,
-                },
                 y: {
-                  type: "spring",
-                  stiffness: 240,
-                  damping: 28,
-                  mass: 0.86,
-                },
-                opacity: {
-                  duration: 0.22,
+                  duration: 0.2,
                   ease: [0.22, 1, 0.36, 1],
                 },
-                filter: {
-                  duration: 0.22,
+                opacity: {
+                  duration: 0.18,
                   ease: [0.22, 1, 0.36, 1],
                 },
               }

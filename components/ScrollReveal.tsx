@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useState, ReactNode } from "react";
-import { motion, useAnimation } from "framer-motion";
+import { motion, useAnimation, useReducedMotion } from "framer-motion";
 
 interface ScrollRevealProps {
   children: ReactNode;
@@ -27,40 +27,44 @@ export default function ScrollReveal({
   const ref = useRef<HTMLDivElement>(null);
   const controls = useAnimation();
   const [hasRevealed, setHasRevealed] = useState(false);
+  const reduceMotion = useReducedMotion();
 
   const getInitial = () => {
+    if (reduceMotion) {
+      return { opacity: 0 };
+    }
     switch (direction) {
       case "left":
         return {
           opacity: 0,
           x: -distance,
           scale,
-          filter: blur ? "blur(6px)" : "blur(0px)",
         };
       case "right":
         return {
           opacity: 0,
           x: distance,
           scale,
-          filter: blur ? "blur(6px)" : "blur(0px)",
         };
       default:
         return {
           opacity: 0,
           y: distance,
           scale,
-          filter: blur ? "blur(6px)" : "blur(0px)",
         };
     }
   };
 
   const getAnimate = () => {
+    if (reduceMotion) {
+      return { opacity: 1 };
+    }
     switch (direction) {
       case "left":
       case "right":
-        return { opacity: 1, x: 0, scale: 1, filter: "blur(0px)" };
+        return { opacity: 1, x: 0, scale: 1 };
       default:
-        return { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" };
+        return { opacity: 1, y: 0, scale: 1 };
     }
   };
 
@@ -89,7 +93,7 @@ export default function ScrollReveal({
       initial={getInitial()}
       animate={controls}
       transition={{
-        duration,
+        duration: reduceMotion ? 0.18 : duration,
         delay,
         ease: [0.22, 1, 0.36, 1],
       }}
@@ -161,17 +165,17 @@ export function StaggerItem({
   children: ReactNode;
   className?: string;
 }) {
+  const reduceMotion = useReducedMotion();
+
   return (
     <motion.div
       className={className}
       variants={{
-        hidden: { opacity: 0, y: 24, scale: 0.985, filter: "blur(4px)" },
+        hidden: reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18, scale: 0.99 },
         visible: {
           opacity: 1,
-          y: 0,
-          scale: 1,
-          filter: "blur(0px)",
-          transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] },
+          ...(reduceMotion ? {} : { y: 0, scale: 1 }),
+          transition: { duration: reduceMotion ? 0.18 : 0.42, ease: [0.22, 1, 0.36, 1] },
         },
       }}
     >
