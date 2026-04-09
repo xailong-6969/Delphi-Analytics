@@ -17,13 +17,62 @@ export default function PageTransitionProvider({ children }: PageTransitionProvi
       <motion.div
         key={pathname}
         className="page-transition-frame"
-        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, filter: "blur(3px)" }}
-        animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, filter: "blur(0px)" }}
-        exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, filter: "blur(2px)" }}
-        transition={{
-          duration: reduceMotion ? 0.12 : 0.2,
-          ease: [0.22, 1, 0.36, 1],
-        }}
+        initial={
+          reduceMotion
+            ? { opacity: 0 }
+            : {
+                opacity: 0,
+                scale: 0.985,
+                y: 18,
+                filter: "blur(12px) saturate(0.92)",
+              }
+        }
+        animate={
+          reduceMotion
+            ? { opacity: 1 }
+            : {
+                opacity: 1,
+                scale: 1,
+                y: 0,
+                filter: "blur(0px) saturate(1)",
+              }
+        }
+        exit={
+          reduceMotion
+            ? { opacity: 0 }
+            : {
+                opacity: 0,
+                scale: 1.008,
+                y: -10,
+                filter: "blur(8px) saturate(0.95)",
+              }
+        }
+        transition={
+          reduceMotion
+            ? { duration: 0.14 }
+            : {
+                scale: {
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 28,
+                  mass: 0.86,
+                },
+                y: {
+                  type: "spring",
+                  stiffness: 240,
+                  damping: 28,
+                  mass: 0.86,
+                },
+                opacity: {
+                  duration: 0.22,
+                  ease: [0.22, 1, 0.36, 1],
+                },
+                filter: {
+                  duration: 0.22,
+                  ease: [0.22, 1, 0.36, 1],
+                },
+              }
+        }
       >
         {children}
       </motion.div>

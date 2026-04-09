@@ -772,7 +772,7 @@ export default function MarketDetailPage({ params }: PageProps) {
         </div>
 
         {recentTrades.length > 0 ? (
-          <div className="overflow-x-auto">
+          <div className="glass-table-shell overflow-x-auto">
             <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="text-left text-xs text-zinc-500 border-b border-[var(--border-color)]">

@@ -38,7 +38,10 @@ export default async function MarketsPage() {
               highest-signal Delphi markets with a cleaner research-style view.
             </p>
           </div>
-          <Link href={featuredHref} className="hero-meta-pill">
+          <Link
+            href={featuredHref}
+            className="glass-control-button glass-control-button-secondary"
+          >
             Open featured market
           </Link>
         </div>
@@ -68,7 +71,7 @@ export default async function MarketsPage() {
       </section>
 
       <div className="space-y-10">
-        {activeMarkets.length > 0 && (
+        {activeMarkets.length > 0 ? (
           <section className="section-panel">
             <div className="section-panel-header">
               <div className="section-panel-copy">
@@ -83,6 +86,26 @@ export default async function MarketsPage() {
               {activeMarkets.map((market) => (
                 <MarketCard key={market.internalId} market={market} />
               ))}
+            </div>
+          </section>
+        ) : (
+          <section className="section-panel glass-empty-state">
+            <div className="section-panel-header">
+              <div className="section-panel-copy">
+                <h2 className="text-xl font-semibold text-white">Market Standby</h2>
+                <p>
+                  Delphi does not have a live market open right now. The archive stays available,
+                  and this page will switch automatically when the next market goes live.
+                </p>
+              </div>
+              <a
+                href="https://delphi.gensyn.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-control-button glass-control-button-secondary"
+              >
+                Open official Delphi
+              </a>
             </div>
           </section>
         )}
@@ -116,7 +139,10 @@ function MarketCard({ market, isSettled = false }: { market: LiveMarketSummary; 
   const badgeLabel = isSettled ? (market.winnerName ? "Settled" : "Archive") : "Active";
 
   return (
-    <Link href={`/markets/${market.internalId}`} className="card glass-hover block p-5 card-hover">
+    <Link
+      href={`/markets/${market.internalId}`}
+      className="card glass-hover block rounded-[1.3rem] border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02)),rgba(10,14,22,0.62)] p-5 card-hover"
+    >
       <div className="mb-4 flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <h3 className="mb-1 font-semibold text-white truncate">Market #{market.displayId}</h3>

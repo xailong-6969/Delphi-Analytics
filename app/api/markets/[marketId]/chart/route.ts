@@ -11,9 +11,10 @@ const CACHE_DURATION = 30 * 1000;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { marketId: string } }
+  { params }: { params: Promise<{ marketId: string }> }
 ) {
-  const marketId = normalizeMarketId(params.marketId);
+  const { marketId: rawMarketId } = await params;
+  const marketId = normalizeMarketId(rawMarketId);
   const { searchParams } = new URL(request.url);
   const timeframe = searchParams.get("timeframe") || "auto";
 

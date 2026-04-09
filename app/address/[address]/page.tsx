@@ -103,25 +103,32 @@ export default function AddressPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 w-1/2 rounded bg-zinc-800" />
-          <div className="mt-8 grid grid-cols-4 gap-4">
-            {[...Array(4)].map((_, index) => (
-              <div key={index} className="h-24 rounded-xl bg-zinc-800" />
+      <div className="page-shell mx-auto max-w-7xl px-4 py-8">
+        <section className="page-hero animate-pulse">
+          <div className="h-6 w-40 rounded-full bg-white/10" />
+          <div className="mt-6 h-12 w-2/3 rounded-2xl bg-white/10" />
+          <div className="mt-4 h-6 w-1/2 rounded-xl bg-white/5" />
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {[...Array(3)].map((_, index) => (
+              <div key={index} className="h-28 rounded-[1.15rem] bg-white/5" />
             ))}
           </div>
-        </div>
+          <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {[...Array(4)].map((_, index) => (
+              <div key={index} className="h-28 rounded-[1.15rem] bg-white/5" />
+            ))}
+          </div>
+        </section>
       </div>
     );
   }
 
   if (error || !stats) {
     return (
-      <div className="mx-auto max-w-7xl px-4 py-8">
-        <div className="card p-12 text-center">
+      <div className="page-shell mx-auto max-w-7xl px-4 py-8">
+        <div className="section-panel glass-empty-state p-12 text-center">
           <p className="text-lg text-red-400">{error || "Address not found"}</p>
-          <Link href="/" className="mt-4 inline-block text-blue-400 hover:underline">
+          <Link href="/" className="glass-control-button glass-control-button-secondary mt-5 inline-flex">
             Back to Home
           </Link>
         </div>
@@ -136,215 +143,279 @@ export default function AddressPage() {
   const sellVolumeShare = calculateVolumeShare(stats.sellVolume, stats.totalVolume);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
-      <div className="mb-8">
-        <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h1 className="break-all font-mono text-xl font-bold text-white sm:text-2xl">
-            {stats.address}
-          </h1>
-          {stats.rank !== null && (
-            <span className="rounded-full bg-amber-500/20 px-3 py-1 text-sm font-medium text-amber-400">
-              Rank #{stats.rank.toLocaleString()} of {stats.totalTraders.toLocaleString()}
-            </span>
-          )}
+    <div className="page-shell mx-auto max-w-7xl px-4 py-8 space-y-8">
+      <section className="page-hero">
+        <span className="page-eyebrow">Wallet Intelligence</span>
+
+        <div className="page-hero-header mt-5">
+          <div className="max-w-4xl">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="break-all font-mono text-2xl font-bold tracking-[-0.04em] text-white sm:text-3xl">
+                {stats.address}
+              </h1>
+              {stats.rank !== null && (
+                <span className="glass-inline-meta">
+                  Rank #{stats.rank.toLocaleString()} of {stats.totalTraders.toLocaleString()}
+                </span>
+              )}
+            </div>
+
+            <p className="page-description mt-4">
+              A live profile of realized performance, market flow, and recent Delphi trades for
+              this wallet. Rankings and P&amp;L refresh from indexed activity so this page stays in
+              sync with the current archive.
+            </p>
+          </div>
+
           <a
             href={LINKS.address(stats.address)}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 text-sm text-zinc-500 hover:text-zinc-300"
+            className="glass-control-button glass-control-button-secondary"
           >
-            View on Explorer ->
+            View on Explorer
           </a>
         </div>
-        <p className="text-sm text-zinc-500">
-          Trading since {stats.firstTrade ? formatDate(stats.firstTrade) : "N/A"}
-        </p>
-      </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          title="Realized P&L"
-          value={`${isProfitable ? "+" : ""}${formatTokens(stats.realizedPnl)}`}
-          color={isProfitable ? "green" : isLoss ? "red" : "blue"}
-          subtitle="$TEST"
-        />
-        <StatCard
-          title="Total Volume"
-          value={formatTokens(stats.totalVolume)}
-          subtitle="$TEST"
-          color="cyan"
-        />
-        <StatCard
-          title="Total Trades"
-          value={stats.totalTrades}
-          subtitle={`${stats.buyCount} buys, ${stats.sellCount} sells`}
-          color="blue"
-        />
-        <StatCard
-          title="Open Positions"
-          value={stats.openPositions}
-          subtitle={`${stats.marketsTraded} markets traded`}
-          color="purple"
-        />
-      </div>
+        <div className="glass-kpi-band mt-6">
+          <div className="glass-kpi-band-card">
+            <p className="page-stat-label">Trading Since</p>
+            <p className="mt-3 text-xl font-semibold text-white">
+              {stats.firstTrade ? formatDate(stats.firstTrade) : "N/A"}
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">Wallet&apos;s first indexed Delphi trade</p>
+          </div>
+
+          <div className="glass-kpi-band-card">
+            <p className="page-stat-label">Last Seen</p>
+            <p className="mt-3 text-xl font-semibold text-white">
+              {stats.lastTrade ? formatTimeAgo(stats.lastTrade) : "N/A"}
+            </p>
+            <p className="mt-2 text-sm text-zinc-400">Latest indexed on-chain activity</p>
+          </div>
+
+          <div className="glass-kpi-band-card">
+            <p className="page-stat-label">Market Reach</p>
+            <p className="mt-3 text-xl font-semibold text-white">{stats.marketsTraded}</p>
+            <p className="mt-2 text-sm text-zinc-400">Distinct Delphi markets traded</p>
+          </div>
+        </div>
+
+        <div className="page-stat-grid">
+          <StatCard
+            title="Realized P&L"
+            value={`${isProfitable ? "+" : ""}${formatTokens(stats.realizedPnl)}`}
+            color={isProfitable ? "green" : isLoss ? "red" : "blue"}
+            subtitle="$TEST"
+          />
+          <StatCard
+            title="Total Volume"
+            value={formatTokens(stats.totalVolume)}
+            subtitle="$TEST"
+            color="cyan"
+          />
+          <StatCard
+            title="Total Trades"
+            value={stats.totalTrades}
+            subtitle={`${stats.buyCount} buys, ${stats.sellCount} sells`}
+            color="blue"
+          />
+          <StatCard
+            title="Open Positions"
+            value={stats.openPositions}
+            subtitle={`${stats.marketsTraded} markets traded`}
+            color="purple"
+          />
+        </div>
+      </section>
 
       {stats.pnlChart.length > 1 && (
-        <div className="card mb-8 p-5">
-          <h2 className="mb-4 font-semibold text-white">P&L Over Time</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={stats.pnlChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor={isProfitable ? "#10b981" : "#ef4444"}
-                    stopOpacity={0.3}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor={isProfitable ? "#10b981" : "#ef4444"}
-                    stopOpacity={0}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
-              <XAxis
-                dataKey="displayTime"
-                stroke="#52525b"
-                tick={{ fill: "#71717a", fontSize: 11 }}
-              />
-              <YAxis
-                stroke="#52525b"
-                tick={{ fill: "#71717a", fontSize: 11 }}
-                tickFormatter={(value) =>
-                  value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toFixed(0)
-                }
-              />
-              <Tooltip
-                contentStyle={{
-                  background: "#16161f",
-                  border: "1px solid #2a2a3a",
-                  borderRadius: "8px",
-                }}
-                formatter={(value: number) => [
-                  `${value >= 0 ? "+" : ""}${value.toFixed(2)} TEST`,
-                  "Cumulative P&L",
-                ]}
-              />
-              <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
-              <Area
-                type="monotone"
-                dataKey="cumulativePnl"
-                stroke={isProfitable ? "#10b981" : "#ef4444"}
-                strokeWidth={2}
-                fill="url(#pnlGradient)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+        <section className="section-panel">
+          <div className="section-panel-header">
+            <div className="section-panel-copy">
+              <h2 className="text-xl font-semibold text-white">P&amp;L Curve</h2>
+              <p>Server-calculated realized performance across this wallet&apos;s indexed trade history.</p>
+            </div>
+          </div>
+
+          <div className="glass-table-shell p-4">
+            <ResponsiveContainer width="100%" height={320}>
+              <AreaChart data={stats.pnlChart} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop
+                      offset="5%"
+                      stopColor={isProfitable ? "#10b981" : "#ef4444"}
+                      stopOpacity={0.3}
+                    />
+                    <stop
+                      offset="95%"
+                      stopColor={isProfitable ? "#10b981" : "#ef4444"}
+                      stopOpacity={0}
+                    />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                <XAxis
+                  dataKey="displayTime"
+                  stroke="#52525b"
+                  tick={{ fill: "#71717a", fontSize: 11 }}
+                />
+                <YAxis
+                  stroke="#52525b"
+                  tick={{ fill: "#71717a", fontSize: 11 }}
+                  tickFormatter={(value) =>
+                    value >= 1000 ? `${(value / 1000).toFixed(0)}K` : value.toFixed(0)
+                  }
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "#16161f",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "8px",
+                  }}
+                  formatter={(value: number) => [
+                    `${value >= 0 ? "+" : ""}${value.toFixed(2)} TEST`,
+                    "Cumulative P&L",
+                  ]}
+                />
+                <ReferenceLine y={0} stroke="#52525b" strokeDasharray="3 3" />
+                <Area
+                  type="monotone"
+                  dataKey="cumulativePnl"
+                  stroke={isProfitable ? "#10b981" : "#ef4444"}
+                  strokeWidth={2}
+                  fill="url(#pnlGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
       )}
 
-      <div className="mb-8 grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm text-zinc-500">Buy Volume</span>
-            <span className="font-mono text-emerald-400">{formatTokens(stats.buyVolume)}</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-emerald-500"
-              style={{ width: `${buyVolumeShare}%` }}
-            />
+      <section className="section-panel">
+        <div className="section-panel-header">
+          <div className="section-panel-copy">
+            <h2 className="text-xl font-semibold text-white">Flow Split</h2>
+            <p>Buy and sell volume distribution across the wallet&apos;s indexed Delphi activity.</p>
           </div>
         </div>
-        <div className="card p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-sm text-zinc-500">Sell Volume</span>
-            <span className="font-mono text-red-400">{formatTokens(stats.sellVolume)}</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-            <div
-              className="h-full rounded-full bg-red-500"
-              style={{ width: `${sellVolumeShare}%` }}
-            />
-          </div>
-        </div>
-      </div>
 
-      <div className="card overflow-hidden">
-        <div className="border-b border-[var(--border-color)] p-4">
-          <h2 className="font-semibold text-white">Trade History</h2>
-        </div>
-        {trades.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[var(--border-color)] text-left text-xs text-zinc-500">
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Market</th>
-                  <th className="px-4 py-3 font-medium">Model</th>
-                  <th className="px-4 py-3 text-right font-medium">Amount</th>
-                  <th className="px-4 py-3 text-right font-medium">Price</th>
-                  <th className="px-4 py-3 text-right font-medium">Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {trades.map((trade) => (
-                  <tr
-                    key={trade.id}
-                    className="table-row border-b border-[var(--border-color)] last:border-0"
-                  >
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${
-                          trade.isBuy
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : "bg-red-500/10 text-red-400"
-                        }`}
-                      >
-                        {trade.isBuy ? "BUY" : "SELL"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/markets/${trade.marketId}`}
-                        className="block max-w-[180px] truncate text-sm text-zinc-300 transition-colors hover:text-blue-400"
-                      >
-                        {trade.marketTitle || `Market #${trade.marketId}`}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-sm text-zinc-400">Model {trade.modelIdx}</span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="font-mono text-sm text-white">
-                        {formatTokens(trade.tokensDelta)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className="font-mono text-sm text-zinc-400">
-                        {trade.impliedProbability?.toFixed(1) || "0"}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <a
-                        href={LINKS.tx(trade.txHash)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-zinc-500 hover:text-zinc-300"
-                      >
-                        {formatTimeAgo(trade.blockTime)}
-                      </a>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="card rounded-[1.25rem] border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),rgba(9,13,20,0.68)] p-5">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <span className="text-sm text-zinc-400">Buy Volume</span>
+              <span className="font-mono text-emerald-400">{formatTokens(stats.buyVolume)}</span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-800/80">
+              <div
+                className="h-full rounded-full bg-emerald-500"
+                style={{ width: `${buyVolumeShare}%` }}
+              />
+            </div>
+            <p className="mt-3 text-xs uppercase tracking-[0.14em] text-zinc-500">
+              {buyVolumeShare.toFixed(2)}% of total flow
+            </p>
           </div>
-        ) : (
-          <div className="p-8 text-center text-zinc-500">No trades found</div>
-        )}
-      </div>
+
+          <div className="card rounded-[1.25rem] border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),rgba(9,13,20,0.68)] p-5">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <span className="text-sm text-zinc-400">Sell Volume</span>
+              <span className="font-mono text-red-400">{formatTokens(stats.sellVolume)}</span>
+            </div>
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-800/80">
+              <div
+                className="h-full rounded-full bg-red-500"
+                style={{ width: `${sellVolumeShare}%` }}
+              />
+            </div>
+            <p className="mt-3 text-xs uppercase tracking-[0.14em] text-zinc-500">
+              {sellVolumeShare.toFixed(2)}% of total flow
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section className="section-panel overflow-hidden">
+        <div className="section-panel-header">
+          <div className="section-panel-copy">
+            <h2 className="text-xl font-semibold text-white">Trade History</h2>
+            <p>The latest 50 indexed trades associated with this wallet.</p>
+          </div>
+        </div>
+
+        <div className="glass-table-shell">
+          {trades.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-[var(--border-color)] text-left text-xs text-zinc-500">
+                    <th className="px-4 py-3 font-medium">Type</th>
+                    <th className="px-4 py-3 font-medium">Market</th>
+                    <th className="px-4 py-3 font-medium">Model</th>
+                    <th className="px-4 py-3 text-right font-medium">Amount</th>
+                    <th className="px-4 py-3 text-right font-medium">Price</th>
+                    <th className="px-4 py-3 text-right font-medium">Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trades.map((trade) => (
+                    <tr
+                      key={trade.id}
+                      className="table-row border-b border-[var(--border-color)] last:border-0"
+                    >
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-[0.12em] ${
+                            trade.isBuy
+                              ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-400"
+                              : "border-red-500/25 bg-red-500/10 text-red-400"
+                          }`}
+                        >
+                          {trade.isBuy ? "BUY" : "SELL"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link
+                          href={`/markets/${trade.marketId}`}
+                          className="block max-w-[220px] truncate text-sm text-zinc-300 transition-colors hover:text-blue-400"
+                        >
+                          {trade.marketTitle || `Market #${trade.marketId}`}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-zinc-400">Model {trade.modelIdx}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-mono text-sm text-white">
+                          {formatTokens(trade.tokensDelta)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-mono text-sm text-zinc-400">
+                          {trade.impliedProbability?.toFixed(1) || "0"}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <a
+                          href={LINKS.tx(trade.txHash)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-zinc-500 hover:text-zinc-300"
+                        >
+                          {formatTimeAgo(trade.blockTime)}
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="glass-empty-state p-8 text-center text-zinc-500">No trades found</div>
+          )}
+        </div>
+      </section>
     </div>
   );
 }

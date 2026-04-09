@@ -7,9 +7,10 @@ export const dynamic = "force-dynamic";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { marketId: string } }
+  { params }: { params: Promise<{ marketId: string }> }
 ) {
-  const marketId = normalizeMarketId(params.marketId);
+  const { marketId: rawMarketId } = await params;
+  const marketId = normalizeMarketId(rawMarketId);
 
   if (!isNumericMarketId(marketId)) {
     return NextResponse.json({ error: "Invalid market ID" }, { status: 400 });

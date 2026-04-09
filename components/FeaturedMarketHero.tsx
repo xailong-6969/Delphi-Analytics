@@ -209,7 +209,7 @@ export default function FeaturedMarketHero({ market }: FeaturedMarketHeroProps) 
             href="https://delphi.gensyn.ai"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-violet-500 hover:shadow-lg hover:shadow-violet-500/25"
+            className="hero-liquid-button hero-liquid-button-primary inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-white transition-all"
           >
             Open Official Delphi
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ export default function FeaturedMarketHero({ market }: FeaturedMarketHeroProps) 
           </a>
           <Link
             href="/markets"
-            className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-zinc-700"
+            className="hero-liquid-button hero-liquid-button-secondary inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-white transition-all"
           >
             Browse Market Archive
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -430,7 +430,7 @@ export default function FeaturedMarketHero({ market }: FeaturedMarketHeroProps) 
           href={`https://delphi.gensyn.ai/market/${market.internalId}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-violet-500 hover:shadow-lg hover:shadow-violet-500/25"
+          className="hero-liquid-button hero-liquid-button-primary inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-white transition-all"
         >
           Trade Now
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -444,7 +444,7 @@ export default function FeaturedMarketHero({ market }: FeaturedMarketHeroProps) 
         </a>
         <Link
           href={`/markets/${market.internalId}`}
-          className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 px-6 py-3 font-semibold text-white transition-all hover:scale-[1.03] hover:bg-zinc-700"
+          className="hero-liquid-button hero-liquid-button-secondary inline-flex items-center gap-2 rounded-xl px-6 py-3 font-semibold text-white transition-all"
         >
           View Details
           <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

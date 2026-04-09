@@ -146,12 +146,12 @@ export default function LeaderboardPage() {
               placeholder="Search by wallet address (0x...)"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="flex-1 px-4 py-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] text-white placeholder-zinc-500 font-mono text-sm focus:outline-none focus:border-blue-500"
+              className="glass-control-input flex-1 px-4 py-3 font-mono text-sm focus:outline-none"
             />
             <div className="flex gap-2">
               <button
                 type="submit"
-                className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors"
+                className="glass-control-button glass-control-button-primary"
               >
                 Search
               </button>
@@ -159,7 +159,7 @@ export default function LeaderboardPage() {
                 <button
                   type="button"
                   onClick={clearSearch}
-                  className="px-4 py-3 rounded-xl bg-zinc-700 hover:bg-zinc-600 text-white transition-colors"
+                  className="glass-control-button glass-control-button-secondary"
                 >
                   Clear
                 </button>
@@ -171,7 +171,7 @@ export default function LeaderboardPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-zinc-400">Sort by:</span>
-            <div className="flex rounded-xl overflow-hidden border border-[var(--border-color)]">
+            <div className="glass-segmented">
               {(["pnl", "volume", "trades"] as const).map((s) => (
                 <button
                   key={s}
@@ -179,10 +179,10 @@ export default function LeaderboardPage() {
                     setSortBy(s);
                     setPage(1);
                   }}
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`glass-segment-button ${
                     sortBy === s
-                      ? "bg-blue-600 text-white"
-                      : "bg-[var(--bg-secondary)] text-zinc-400 hover:text-white"
+                      ? "glass-segment-button-active"
+                      : ""
                   }`}
                 >
                   {s === "pnl" ? "P&L" : s === "volume" ? "Volume" : "Trades"}
@@ -199,7 +199,7 @@ export default function LeaderboardPage() {
                 setPerPage(Number(e.target.value));
                 setPage(1);
               }}
-              className="px-3 py-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] text-white text-sm"
+              className="glass-control-select px-3 py-2 text-sm focus:outline-none"
             >
               <option value={25}>25</option>
               <option value={50}>50</option>
@@ -232,7 +232,7 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="glass-table-shell overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-xs text-zinc-500 border-b border-[var(--border-color)]">
@@ -315,31 +315,31 @@ export default function LeaderboardPage() {
                   <button
                     onClick={() => setPage(1)}
                     disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] text-sm text-zinc-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="glass-control-button glass-control-button-secondary px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     First
                   </button>
                   <button
                     onClick={() => setPage((current) => Math.max(1, current - 1))}
                     disabled={page === 1}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] text-sm text-zinc-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="glass-control-button glass-control-button-secondary px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Prev
                   </button>
-                  <span className="px-3 py-1.5 text-sm text-white">
+                  <span className="glass-inline-meta px-4 py-2 text-sm">
                     Page {page} of {data.totalPages}
                   </span>
                   <button
                     onClick={() => setPage((current) => Math.min(data.totalPages, current + 1))}
                     disabled={page === data.totalPages}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] text-sm text-zinc-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="glass-control-button glass-control-button-secondary px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next
                   </button>
                   <button
                     onClick={() => setPage(data.totalPages)}
                     disabled={page === data.totalPages}
-                    className="px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] text-sm text-zinc-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="glass-control-button glass-control-button-secondary px-3 py-1.5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Last
                   </button>

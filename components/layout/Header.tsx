@@ -32,7 +32,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 glass border-b border-[var(--border-color)]">
+      <header className="liquid-header-shell sticky top-0 z-50 border-b border-[var(--border-color)]">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4">
             {/* Hamburger + Logo */}
@@ -47,7 +47,7 @@ export default function Header() {
                 <span className="hamburger-line" />
               </button>
 
-              <Link href="/" className="flex items-center gap-3 group shrink-0">
+              <Link href="/" className="liquid-logo-lockup flex items-center gap-3 group shrink-0">
                 <img
                   src="/bat-logo.png"
                   alt="Logo"
@@ -67,10 +67,10 @@ export default function Header() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-medium transition-all",
+                    "header-nav-link px-4 py-2 rounded-lg text-sm font-medium transition-all",
                     pathname === item.href
-                      ? "bg-white/10 text-white"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
+                      ? "header-nav-link-active text-white"
+                      : "text-zinc-400 hover:text-white"
                   )}
                 >
                   {item.label}
@@ -81,7 +81,7 @@ export default function Header() {
             {/* Search */}
             <form onSubmit={handleSearch} className="flex-1 max-w-md">
               <div className={cn(
-                "relative flex items-center transition-all duration-200",
+                "header-search-shell relative flex items-center transition-all duration-200",
                 isSearchFocused && "transform scale-[1.02]"
               )}>
                 <input
@@ -92,7 +92,7 @@ export default function Header() {
                   onFocus={() => setIsSearchFocused(true)}
                   onBlur={() => setIsSearchFocused(false)}
                   className={cn(
-                    "w-full px-4 py-2.5 pr-12 rounded-lg bg-[var(--bg-secondary)] border text-white placeholder-zinc-500 text-sm font-mono focus:outline-none transition-all duration-200",
+                    "header-search-input w-full px-4 py-2.5 pr-12 rounded-lg border text-white placeholder-zinc-500 text-sm font-mono focus:outline-none transition-all duration-200",
                     isSearchFocused
                       ? "border-blue-500/50 ring-1 ring-blue-500/20"
                       : "border-[var(--border-color)]"
@@ -100,7 +100,7 @@ export default function Header() {
                 />
                 <button
                   type="submit"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md bg-blue-600 hover:bg-blue-500 transition-colors"
+                  className="header-search-button absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md transition-colors"
                 >
                   <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -116,7 +116,7 @@ export default function Header() {
                 href="https://delphi.gensyn.ai"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white hover:bg-white/5 transition-all"
+                className="header-utility-link flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-zinc-400 hover:text-white transition-all"
               >
                 <span>Trade</span>
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,10 +125,10 @@ export default function Header() {
               </a>
 
               {/* Divider */}
-              <div className="w-px h-6 bg-zinc-700"></div>
+              <div className="header-divider w-px h-6"></div>
 
               {/* Creator with GitHub */}
-              <div className="flex flex-col items-end">
+              <div className="header-credit-block flex flex-col items-end">
                 <span className="text-xs text-zinc-500">
                   Built by <span className="text-purple-400 font-medium">xailong_6969</span>
                 </span>
