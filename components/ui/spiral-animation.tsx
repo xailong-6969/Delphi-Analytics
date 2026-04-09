@@ -280,8 +280,8 @@ interface SpiralAnimationProps {
 export function SpiralAnimation({
   className,
   particleColor = "rgba(191, 145, 255, 0.92)",
-  trailLength = 54,
-  starCount = 1500,
+  trailLength = 28,
+  starCount = 640,
 }: SpiralAnimationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -294,17 +294,33 @@ export function SpiralAnimation({
       return;
     }
 
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     const ctx = canvas.getContext("2d");
     if (!ctx) {
       return;
     }
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.2);
 
     const resize = () => {
       const rect = wrapper.getBoundingClientRect();
       const width = Math.max(rect.width, 1);
       const height = Math.max(rect.height, 1);
+      const adaptiveStarCount = reduceMotion
+        ? Math.min(starCount, 120)
+        : width < 640
+          ? Math.min(starCount, 220)
+          : width < 1024
+            ? Math.min(starCount, 360)
+            : starCount;
+      const adaptiveTrailLength = reduceMotion
+        ? Math.min(trailLength, 10)
+        : width < 640
+          ? Math.min(trailLength, 14)
+          : width < 1024
+            ? Math.min(trailLength, 20)
+            : trailLength;
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       canvas.style.width = `${width}px`;
@@ -321,8 +337,8 @@ export function SpiralAnimation({
           width,
           height,
           particleColor,
-          trailLength,
-          starCount
+          adaptiveTrailLength,
+          adaptiveStarCount
         );
       }
     };
