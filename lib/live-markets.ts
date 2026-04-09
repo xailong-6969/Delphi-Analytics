@@ -94,8 +94,6 @@ function hasRenderableMarketData(summary: Pick<
 >) {
   if (summary.models.length > 0) return true;
   if (summary.configUri) return true;
-  if (summary.totalTrades > 0) return true;
-  if (summary.totalVolume !== "0") return true;
   return !isGenericTitle(summary.title, summary.internalId);
 }
 

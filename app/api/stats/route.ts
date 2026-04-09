@@ -93,6 +93,9 @@ export async function GET() {
       totalMarkets: liveMarkets.length,
       activeMarkets: liveMarkets.filter((market) => market.isCurrentActive).length,
       settledMarkets: liveMarkets.filter((market) => !market.isCurrentActive).length,
+      activeMarketIds: liveMarkets
+        .filter((market) => market.isCurrentActive)
+        .map((market) => market.internalId),
       uniqueTraders: Number(uniqueTradersCount[0]?.count || 0),
       totalVolume: totalVolume.toString(),
       totalVolumeFormatted: formatVolume(totalVolume),

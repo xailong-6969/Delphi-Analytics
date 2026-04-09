@@ -12,20 +12,33 @@ interface TickerTrade {
   marketId: string;
 }
 
+interface StatsTickerResponse {
+  activeMarkets?: number;
+  activeMarketIds?: string[];
+  recentTrades?: TickerTrade[];
+}
+
 export default function LiveTicker() {
   const [trades, setTrades] = useState<TickerTrade[]>([]);
+  const [hasLiveMarket, setHasLiveMarket] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function fetchTrades() {
       try {
         const res = await fetch("/api/stats");
-        const json = await res.json();
-        if (json.recentTrades?.length) {
-          setTrades(json.recentTrades.slice(0, 12));
-        }
+        const json: StatsTickerResponse = await res.json();
+        const activeMarketIds = new Set(json.activeMarketIds || []);
+        const liveTrades = (json.recentTrades || []).filter((trade) =>
+          activeMarketIds.has(trade.marketId)
+        );
+
+        setHasLiveMarket((json.activeMarkets || 0) > 0 && activeMarketIds.size > 0);
+        setTrades(liveTrades.slice(0, 12));
       } catch {
         // Silently fail — ticker just won't show
+        setHasLiveMarket(false);
+        setTrades([]);
       }
     }
     fetchTrades();
@@ -34,7 +47,7 @@ export default function LiveTicker() {
   }, []);
 
   // Generate fallback items if no live data
-  const tickerItems = trades.length > 0 ? trades : null;
+  const tickerItems = hasLiveMarket && trades.length > 0 ? trades : null;
 
   if (!tickerItems) {
     // Static fallback ticker
@@ -44,12 +57,12 @@ export default function LiveTicker() {
           {[...Array(2)].map((_, dup) => (
             <div key={dup} className="ticker-content" aria-hidden={dup > 0}>
               {[
-                "DELPHI ANALYTICS",
-                "PREDICTION MARKETS",
+                "NEW MARKET WILL BE ANNOUNCED SOON",
+                "WATCHING DELPHI FOR THE NEXT LIVE MARKET",
+                "OFFICIAL DELPHI: DELPHI.GENSYN.AI",
+                "TICKER RESUMES WHEN LIVE TRADING OPENS",
                 "GENSYN TESTNET",
-                "LIVE DATA",
-                "ON-CHAIN TRADES",
-                "REAL-TIME ODDS",
+                "DELPHI ANALYTICS",
               ].map((text, i) => (
                 <span key={i} className="ticker-item ticker-item-static">
                   <span className="ticker-diamond">◆</span>

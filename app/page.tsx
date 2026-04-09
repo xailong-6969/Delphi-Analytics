@@ -280,7 +280,7 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="page-shell mx-auto flex min-h-[70vh] max-w-[92rem] items-center justify-center px-4 py-8">
+      <div className="page-shell mx-auto flex min-h-[70vh] max-w-[92rem] items-center justify-center px-4 pt-4 pb-8">
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 18 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -297,7 +297,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="page-shell home-page-shell mx-auto max-w-[92rem] px-4 py-8 space-y-10">
+    <div className="page-shell home-page-shell mx-auto max-w-[92rem] px-4 pt-4 pb-8 space-y-10">
       <section className="home-command-hero">
         <motion.div
           className="home-command-copy"
