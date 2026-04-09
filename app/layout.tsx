@@ -22,15 +22,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <body className="min-h-screen overflow-x-hidden antialiased">
         <div className="app-background" aria-hidden="true">
-          <div className="app-background-glow app-background-glow-gold" />
-          <div className="app-background-glow app-background-glow-blue" />
-          <div className="app-background-glow app-background-glow-cyan" />
-          <div className="app-background-beam app-background-beam-left" />
-          <div className="app-background-beam app-background-beam-right" />
-          <div className="app-background-orbit app-background-orbit-one" />
-          <div className="app-background-orbit app-background-orbit-two" />
+          <div className="app-background-ambient" />
+          <div className="app-background-sheen" />
           <div className="app-background-grid" />
-          <div className="app-background-focus" />
           <div className="app-background-vignette" />
         </div>
 

@@ -69,19 +69,10 @@ export function LiquidGlassSurface({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[rgba(14,18,28,0.24)] text-white shadow-[0_18px_44px_rgba(2,6,23,0.18)] backdrop-blur-[8px]",
+        "relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-[rgba(14,18,28,0.46)] text-white shadow-[0_14px_34px_rgba(2,6,23,0.14)] backdrop-blur-[4px]",
         className
       )}
     >
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          borderRadius: "inherit",
-          backdropFilter: "blur(4px) saturate(1.08)",
-          WebkitBackdropFilter: "blur(4px) saturate(1.08)",
-        }}
-      />
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"

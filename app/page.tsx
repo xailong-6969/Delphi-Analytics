@@ -234,8 +234,8 @@ export default function HomePage() {
       <section className="home-command-hero">
         <motion.div
           className="home-command-copy"
-          initial={{ opacity: 0, y: 28, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 28 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         >
           <span className="home-signal-badge">Delphi Testnet Analytics</span>
@@ -296,8 +296,8 @@ export default function HomePage() {
 
         <motion.div
           className="home-command-stage"
-          initial={{ opacity: 0, y: 34, filter: "blur(8px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          initial={{ opacity: 0, y: 34 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
         >
           <div className="home-stage-frame">
@@ -433,8 +433,8 @@ export default function HomePage() {
                     return (
                       <motion.tr
                         key={trade.id}
-                        initial={{ opacity: 0, x: -18, filter: "blur(4px)" }}
-                        animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                        initial={{ opacity: 0, x: -18 }}
+                        animate={{ opacity: 1, x: 0 }}
                         transition={{
                           delay: 0.06 * idx,
                           duration: 0.45,

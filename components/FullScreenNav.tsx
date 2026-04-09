@@ -57,10 +57,10 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
         >
           <motion.div
             className="fullnav-backdrop"
-            initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
-            animate={{ opacity: 1, backdropFilter: "blur(20px)" }}
-            exit={{ opacity: 0, backdropFilter: "blur(0px)" }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.28 }}
           />
 
           {hoveredIndex !== null && (
@@ -94,9 +94,9 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
               return (
                 <motion.div
                   key={item.href}
-                  initial={{ opacity: 0, x: -60, filter: "blur(8px)" }}
-                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                  exit={{ opacity: 0, x: 60, filter: "blur(8px)" }}
+                  initial={{ opacity: 0, x: -60 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 60 }}
                   transition={{
                     delay: 0.05 + index * 0.08,
                     duration: 0.5,

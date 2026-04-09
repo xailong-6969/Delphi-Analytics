@@ -1,20 +1,11 @@
 "use client";
 
-import * as React from "react";
-import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { DELPHI_PROXY, LINKS } from "@/lib/constants";
 import {
   LiquidGlassButton,
   LiquidGlassDock,
-  LiquidGlassFilter,
   LiquidGlassSurface,
 } from "@/components/ui/liquid-glass";
-
-if (typeof window !== "undefined") {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 function FooterMarkIcon() {
   return (
@@ -84,66 +75,6 @@ const marqueeItems = [
 ];
 
 export function CinematicFooter() {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const giantTextRef = useRef<HTMLDivElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const subheadingRef = useRef<HTMLParagraphElement>(null);
-  const dockRef = useRef<HTMLDivElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
-  const badgesRef = useRef<HTMLDivElement>(null);
-  const bottomBarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!wrapperRef.current) {
-      return;
-    }
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        giantTextRef.current,
-        { y: "10vh", scale: 0.88, opacity: 0 },
-        {
-          y: "0vh",
-          scale: 1,
-          opacity: 1,
-          ease: "power1.out",
-          scrollTrigger: {
-            trigger: wrapperRef.current,
-            start: "top 85%",
-            end: "bottom bottom",
-            scrub: 1,
-          },
-        }
-      );
-
-      gsap.fromTo(
-        [
-          headingRef.current,
-          subheadingRef.current,
-          dockRef.current,
-          actionsRef.current,
-          badgesRef.current,
-          bottomBarRef.current,
-        ],
-        { y: 56, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          stagger: 0.12,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: wrapperRef.current,
-            start: "top 72%",
-            end: "bottom 85%",
-            scrub: 0.9,
-          },
-        }
-      );
-    }, wrapperRef);
-
-    return () => ctx.revert();
-  }, []);
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -174,109 +105,107 @@ export function CinematicFooter() {
   ];
 
   return (
-    <div
-      ref={wrapperRef}
-      className="relative h-[88vh] w-full"
-      style={{ clipPath: "polygon(0% 0, 100% 0%, 100% 100%, 0 100%)" }}
-    >
-      <LiquidGlassFilter />
+    <footer className="motion-footer-shell relative mt-14 overflow-hidden border-t border-white/6">
+      <div className="motion-footer-grid pointer-events-none absolute inset-0" />
+      <div className="motion-footer-vignette pointer-events-none absolute inset-0" />
+      <div className="motion-footer-giant pointer-events-none absolute inset-x-0 bottom-[-1.5rem] text-center select-none">
+        DELPHI
+      </div>
 
-      <footer className="motion-footer-shell fixed bottom-0 left-0 flex h-[88vh] w-full flex-col justify-between overflow-hidden bg-[var(--bg-primary)] text-white">
-        <div className="motion-footer-aurora pointer-events-none absolute left-1/2 top-1/2 h-[46vh] w-[72vw] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[70px]" />
-        <div className="motion-footer-grid pointer-events-none absolute inset-0" />
-        <div className="motion-footer-vignette pointer-events-none absolute inset-0" />
-
-        <div
-          ref={giantTextRef}
-          className="motion-footer-giant pointer-events-none absolute inset-x-0 bottom-[-6vh] text-center select-none"
-        >
-          DELPHI
-        </div>
-
-        <div className="absolute top-14 left-1/2 z-10 w-[112%] -translate-x-1/2 -rotate-[1.6deg] overflow-hidden border-y border-white/10 bg-black/30 py-3 backdrop-blur-md">
-          <div className="motion-footer-marquee-track flex w-max text-[11px] font-semibold uppercase tracking-[0.28em] text-zinc-400">
-            {[...Array(2)].map((_, group) => (
-              <div key={group} className="flex items-center">
-                {marqueeItems.map((item, index) => (
-                  <div key={`${group}-${item}`} className="flex items-center space-x-4 px-5">
-                    <span>{item}</span>
-                    <span className={index % 2 === 0 ? "text-cyan-300/55" : "text-amber-200/45"}>✦</span>
-                  </div>
-                ))}
+      <div className="relative z-10 mx-auto flex w-full max-w-7xl flex-col gap-10 px-6 py-16 md:px-8">
+        <div className="motion-footer-marquee rounded-full border border-white/8 bg-white/[0.03] px-4 py-3">
+          <div className="motion-footer-marquee-track flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
+            {marqueeItems.map((item, index) => (
+              <div key={item} className="flex items-center gap-4">
+                <span>{item}</span>
+                {index < marqueeItems.length - 1 ? (
+                  <span className={index % 2 === 0 ? "text-cyan-300/50" : "text-amber-200/40"}>•</span>
+                ) : null}
               </div>
             ))}
           </div>
         </div>
 
-        <div className="relative z-10 mx-auto flex h-full w-full max-w-7xl flex-1 flex-col justify-center px-6 pt-20 md:px-8">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="page-eyebrow mx-auto">Motion Footer</p>
-            <h2
-              ref={headingRef}
-              className="mt-8 text-4xl font-black tracking-[-0.05em] text-white sm:text-6xl md:text-7xl"
-            >
-              Stay ready for the next Delphi market.
-            </h2>
-            <p
-              ref={subheadingRef}
-              className="mx-auto mt-6 max-w-3xl text-sm leading-8 text-zinc-300 sm:text-base"
-            >
-              A premium footer designed as a final command surface: launch Delphi, move into the
-              market archive, trace the contract, or jump into the explorer while the homepage
-              stays synced for the next official release.
-            </p>
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="space-y-6">
+            <div>
+              <p className="page-eyebrow">Footer Command Deck</p>
+              <h2 className="mt-6 text-4xl font-black tracking-[-0.05em] text-white sm:text-5xl">
+                Stay ready for the next Delphi market.
+              </h2>
+              <p className="mt-5 max-w-3xl text-sm leading-8 text-zinc-300 sm:text-base">
+                A lighter closing section that keeps the important links close: official Delphi,
+                the market archive, leaderboard, explorer, and the tracked contract.
+              </p>
+            </div>
+
+            <LiquidGlassDock items={dockItems} className="rounded-[1.75rem] px-4 py-3" />
+
+            <div className="flex flex-wrap gap-3">
+              <LiquidGlassButton href={LINKS.delphi} external variant="primary">
+                Open Official Delphi
+              </LiquidGlassButton>
+              <LiquidGlassButton href="/markets" variant="secondary">
+                Browse Market Archive
+              </LiquidGlassButton>
+              <LiquidGlassButton href="/leaderboard" variant="ghost">
+                Open Leaderboard
+              </LiquidGlassButton>
+            </div>
           </div>
 
-          <div ref={dockRef} className="mt-10 flex justify-center">
-            <LiquidGlassDock items={dockItems} className="rounded-[1.9rem] px-4 py-3" />
-          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <LiquidGlassSurface className="rounded-[1.5rem] p-5 sm:col-span-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Tracking contract
+              </p>
+              <p className="mt-3 text-lg font-semibold text-white">
+                {DELPHI_PROXY.slice(0, 10)}...{DELPHI_PROXY.slice(-6)}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Live market discovery, wallet analytics, and archive pages stay tied to Delphi
+                activity through the tracked proxy.
+              </p>
+            </LiquidGlassSurface>
 
-          <div ref={actionsRef} className="mt-8 flex flex-wrap justify-center gap-3">
-            <LiquidGlassButton href={LINKS.delphi} external variant="primary">
-              Open Official Delphi
-            </LiquidGlassButton>
-            <LiquidGlassButton href="/markets" variant="secondary">
-              Browse Market Archive
-            </LiquidGlassButton>
-            <LiquidGlassButton href="/leaderboard" variant="ghost">
-              Open Leaderboard
-            </LiquidGlassButton>
-          </div>
+            <LiquidGlassSurface className="rounded-[1.4rem] p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Live links
+              </p>
+              <p className="mt-3 text-xl font-semibold text-white">Delphi + Explorer</p>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Jump into the live market surface or audit the contract flow from the explorer.
+              </p>
+            </LiquidGlassSurface>
 
-          <div ref={badgesRef} className="mt-7 flex flex-wrap justify-center gap-3">
-            <LiquidGlassSurface className="rounded-full px-4 py-2.5 text-sm text-zinc-200">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.65)]" />
-                Tracking {DELPHI_PROXY.slice(0, 10)}...{DELPHI_PROXY.slice(-6)}
-              </div>
+            <LiquidGlassSurface className="rounded-[1.4rem] p-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                Built by
+              </p>
+              <a
+                href="https://github.com/xailong-6969"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex text-xl font-semibold text-white hover:text-cyan-200"
+              >
+                xailong_6969
+              </a>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">
+                Open the public GitHub profile linked to this Delphi Analytics deployment.
+              </p>
             </LiquidGlassSurface>
           </div>
         </div>
 
-        <div
-          ref={bottomBarRef}
-          className="relative z-20 mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-5 px-6 pb-7 pt-5 md:flex-row md:px-8"
-        >
+        <div className="flex flex-col items-center justify-between gap-4 border-t border-white/6 pt-6 md:flex-row">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
             © 2026 Delphi Analytics · Gensyn Testnet
           </div>
 
-          <LiquidGlassSurface className="rounded-full px-5 py-3">
-            <a
-              href="https://github.com/xailong-6969"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300"
-            >
-              <span>Built by</span>
-              <span className="text-white">xailong_6969</span>
-            </a>
-          </LiquidGlassSurface>
-
           <button
             type="button"
             onClick={scrollToTop}
-            className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-200 backdrop-blur-md transition-all hover:-translate-y-1 hover:border-white/20 hover:bg-white/10"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-200 transition-all hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/10"
           >
             Back to top
             <svg
@@ -294,7 +223,7 @@ export function CinematicFooter() {
             </svg>
           </button>
         </div>
-      </footer>
-    </div>
+      </div>
+    </footer>
   );
 }
