@@ -133,7 +133,7 @@ export default function Header() {
                   Built by <span className="text-purple-400 font-medium">xailong_6969</span>
                 </span>
                 <a
-                  href="https://github.com/xailong-6969/Delphi-Analytics"
+                  href="https://github.com/xailong-6969"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-1 text-xs text-zinc-500 hover:text-white transition-colors mt-0.5"

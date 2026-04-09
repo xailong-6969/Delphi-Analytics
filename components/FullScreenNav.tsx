@@ -13,7 +13,7 @@ const navItems = [
 
 const externalLinks = [
   { href: "https://delphi.gensyn.ai", label: "TRADE", icon: "↗" },
-  { href: "https://github.com/xailong-6969/Delphi-Analytics", label: "GITHUB", icon: "↗" },
+  { href: "https://github.com/xailong-6969", label: "GITHUB", icon: "↗" },
 ];
 
 interface FullScreenNavProps {
@@ -25,26 +25,22 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
   const pathname = usePathname();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
-  // Close on route change
   useEffect(() => {
     onClose();
-  }, [pathname]);
+  }, [pathname, onClose]);
 
-  // Lock body scroll
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => {
       document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
+    };
   }, [isOpen]);
 
-  // Close on Escape
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
     };
+
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
@@ -59,7 +55,6 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Glassmorphism background */}
           <motion.div
             className="fullnav-backdrop"
             initial={{ opacity: 0, backdropFilter: "blur(0px)" }}
@@ -68,7 +63,6 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
             transition={{ duration: 0.4 }}
           />
 
-          {/* Spotlight effect — follows hovered item */}
           {hoveredIndex !== null && (
             <motion.div
               className="fullnav-spotlight"
@@ -80,7 +74,6 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
             />
           )}
 
-          {/* Close button */}
           <motion.button
             className="fullnav-close"
             onClick={onClose}
@@ -95,9 +88,8 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
             </svg>
           </motion.button>
 
-          {/* Main nav items */}
           <nav className="fullnav-content">
-            {navItems.map((item, idx) => {
+            {navItems.map((item, index) => {
               const isActive = pathname === item.href;
               return (
                 <motion.div
@@ -105,8 +97,12 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
                   initial={{ opacity: 0, x: -60, filter: "blur(8px)" }}
                   animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
                   exit={{ opacity: 0, x: 60, filter: "blur(8px)" }}
-                  transition={{ delay: 0.05 + idx * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  onMouseEnter={() => setHoveredIndex(idx)}
+                  transition={{
+                    delay: 0.05 + index * 0.08,
+                    duration: 0.5,
+                    ease: [0.22, 1, 0.36, 1],
+                  }}
+                  onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
                   <Link
@@ -124,7 +120,6 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
             })}
           </nav>
 
-          {/* External links */}
           <motion.div
             className="fullnav-external"
             initial={{ opacity: 0, y: 20 }}
@@ -146,15 +141,14 @@ export default function FullScreenNav({ isOpen, onClose }: FullScreenNavProps) {
             ))}
           </motion.div>
 
-          {/* Bottom branding */}
           <motion.div
             className="fullnav-brand"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            <span className="text-violet-400 font-semibold">Delphi Analytics</span>
-            <span className="text-zinc-600 text-xs">Gensyn Testnet</span>
+            <span className="font-semibold text-violet-400">Delphi Analytics</span>
+            <span className="text-xs text-zinc-600">Gensyn Testnet</span>
           </motion.div>
         </motion.div>
       )}

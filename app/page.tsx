@@ -37,87 +37,44 @@ interface MarketsResponse {
   markets: LiveMarketSummary[];
 }
 
-function formatMarketChipDate(market: LiveMarketSummary): string {
-  return market.dateLabel || (market.isCurrentActive ? "Live market" : "Resolved");
+interface LeaderboardTrader {
+  rank: number;
+  address: string;
+  realizedPnl: string;
+  totalVolume: string;
+  totalTrades: number;
 }
 
-function renderFeatureIcon(kind: "pulse" | "wallet" | "archive" | "chain") {
-  const sharedProps = {
-    className: "w-5 h-5",
-    fill: "none",
-    stroke: "currentColor",
-    viewBox: "0 0 24 24",
-  };
+interface LeaderboardResponse {
+  leaderboard: LeaderboardTrader[];
+}
 
-  switch (kind) {
-    case "pulse":
-      return (
-        <svg {...sharedProps}>
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.8}
-            d="M4 13h3l2-5 4 10 2-5h5"
-          />
-        </svg>
-      );
-    case "wallet":
-      return (
-        <svg {...sharedProps}>
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.8}
-            d="M3 7.5A2.5 2.5 0 015.5 5h11A2.5 2.5 0 0119 7.5V9h-3a2 2 0 000 4h3v1.5A2.5 2.5 0 0116.5 17h-11A2.5 2.5 0 013 14.5v-7z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.8}
-            d="M19 9h1.5A1.5 1.5 0 0122 10.5v1A1.5 1.5 0 0120.5 13H19"
-          />
-        </svg>
-      );
-    case "archive":
-      return (
-        <svg {...sharedProps}>
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.8}
-            d="M5 8.5h14M7 5h10a1 1 0 011 1v3H6V6a1 1 0 011-1zm-1 4h12v8a2 2 0 01-2 2H8a2 2 0 01-2-2V9zm4 3h4"
-          />
-        </svg>
-      );
-    case "chain":
-      return (
-        <svg {...sharedProps}>
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.8}
-            d="M10 14l-2 2a3 3 0 104.243 4.243l2-2M14 10l2-2A3 3 0 0011.757 3.757l-2 2M9 15l6-6"
-          />
-        </svg>
-      );
-  }
+function formatMarketChipDate(market: LiveMarketSummary): string {
+  return market.dateLabel || (market.isCurrentActive ? "Live market" : "Resolved");
 }
 
 export default function HomePage() {
   const [data, setData] = useState<HomeData | null>(null);
   const [liveMarkets, setLiveMarkets] = useState<LiveMarketSummary[]>([]);
+  const [leaderboardPreview, setLeaderboardPreview] = useState<LeaderboardTrader[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        const [statsRes, marketsRes] = await Promise.all([
+        const [statsRes, marketsRes, leaderboardRes] = await Promise.all([
           fetch("/api/stats"),
           fetch("/api/markets"),
+          fetch("/api/leaderboard?page=1&limit=6&sortBy=pnl"),
         ]);
-        const [statsJson, marketsJson]: [HomeData, MarketsResponse] = await Promise.all([
+        const [statsJson, marketsJson, leaderboardJson]: [
+          HomeData,
+          MarketsResponse,
+          LeaderboardResponse & { error?: string },
+        ] = await Promise.all([
           statsRes.json(),
           marketsRes.json(),
+          leaderboardRes.json(),
         ]);
 
         if (!(statsJson as any).error) {
@@ -125,6 +82,9 @@ export default function HomePage() {
         }
         if (!(marketsJson as any).error) {
           setLiveMarkets(marketsJson.markets || []);
+        }
+        if (!(leaderboardJson as any).error) {
+          setLeaderboardPreview(leaderboardJson.leaderboard || []);
         }
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
@@ -248,33 +208,6 @@ export default function HomePage() {
         ? `Last block ${data.lastIndexedBlock}`
         : "Awaiting first sync",
       accent: "accent-ice",
-    },
-  ];
-
-  const featureCards = [
-    {
-      kind: "pulse" as const,
-      title: "Live Conviction Tracking",
-      description:
-        "See how probability shifts in real time instead of staring at static market cards.",
-    },
-    {
-      kind: "wallet" as const,
-      title: "Wallet Analytics",
-      description:
-        "Jump from leaderboard ranks to address-level trade history and P&L in one flow.",
-    },
-    {
-      kind: "archive" as const,
-      title: "Benchmark Archive",
-      description:
-        "Compare resolved model markets and outcome markets with cleaner context and richer hierarchy.",
-    },
-    {
-      kind: "chain" as const,
-      title: "On-Chain Transparency",
-      description:
-        "Every stat is grounded in indexed Gensyn activity, not hand-curated screenshots or guesses.",
     },
   ];
 
@@ -639,66 +572,95 @@ export default function HomePage() {
         <section className="section-panel">
           <div className="section-panel-header">
             <div className="section-panel-copy">
-              <span className="page-eyebrow">Why It Feels Better</span>
+              <span className="page-eyebrow">Leaderboard Preview</span>
               <h2 className="mt-4 text-2xl font-semibold text-white">
-                Designed for signal, not just stats
+                Highest-performing wallets, right on the homepage
               </h2>
               <p>
-                The visual pass is now more branded, more layered, and more intentional in motion
-                and hierarchy.
+                After market discovery, move straight into ranked trader performance without leaving
+                the homepage flow.
               </p>
             </div>
+            <Link href="/leaderboard" className="hero-meta-pill">
+              Open full leaderboard
+            </Link>
           </div>
 
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" staggerDelay={0.08}>
-            {featureCards.map((feature) => (
-              <StaggerItem key={feature.title}>
-                <div className="card feature-spotlight-card p-5">
-                  <div className="feature-icon-shell">
-                    {renderFeatureIcon(feature.kind)}
-                  </div>
-                  <h3 className="mt-5 text-lg font-semibold text-white">
-                    {feature.title}
-                  </h3>
-                  <p className="mt-3 text-sm leading-7 text-zinc-400">
-                    {feature.description}
-                  </p>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </section>
-      </ScrollReveal>
-
-      <ScrollReveal duration={0.82} distance={34}>
-        <section className="home-closing-panel">
-          <div className="home-closing-copy">
-            <span className="home-signal-badge">Next Move</span>
-            <h2 className="home-closing-title">
-              Move from homepage polish into real market flow.
-            </h2>
-            <p className="home-closing-description">
-              Jump into live Delphi markets, scan the highest-performing wallets, or head straight
-              to the trading interface when you want the underlying venue.
-            </p>
-          </div>
-
-          <div className="home-closing-actions">
-            <Link href="/markets" className="premium-button-primary">
-              Browse Markets
-            </Link>
-            <Link href="/leaderboard" className="premium-button-secondary">
-              Open Leaderboard
-            </Link>
-            <a
-              href="https://delphi.gensyn.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="premium-button-ghost"
+          {leaderboardPreview.length > 0 ? (
+            <StaggerContainer
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4"
+              staggerDelay={0.08}
             >
-              Launch Delphi
-            </a>
-          </div>
+              {leaderboardPreview.map((trader) => (
+                <StaggerItem key={trader.address}>
+                  <Link
+                    href={`/address/${trader.address}`}
+                    className={`card market-preview-card home-leaderboard-card p-5 block ${
+                      trader.rank === 1
+                        ? "home-leaderboard-rank-1"
+                        : trader.rank === 2
+                          ? "home-leaderboard-rank-2"
+                          : trader.rank === 3
+                            ? "home-leaderboard-rank-3"
+                            : ""
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">
+                          Rank #{trader.rank}
+                        </p>
+                        <h3 className="mt-2 text-base font-semibold text-white leading-snug">
+                          {formatAddress(trader.address, 6)}
+                        </h3>
+                      </div>
+                      <span className="home-leaderboard-rank-badge">
+                        {trader.rank === 1
+                          ? "1ST"
+                          : trader.rank === 2
+                            ? "2ND"
+                            : trader.rank === 3
+                              ? "3RD"
+                              : `#${trader.rank}`}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-3 gap-3">
+                      <div className="home-leaderboard-metric">
+                        <span className="home-leaderboard-metric-label">Realized P&L</span>
+                        <span className="home-leaderboard-metric-value">
+                          {formatTokens(trader.realizedPnl)}
+                        </span>
+                      </div>
+                      <div className="home-leaderboard-metric">
+                        <span className="home-leaderboard-metric-label">Volume</span>
+                        <span className="home-leaderboard-metric-value">
+                          {formatTokens(trader.totalVolume)}
+                        </span>
+                      </div>
+                      <div className="home-leaderboard-metric">
+                        <span className="home-leaderboard-metric-label">Trades</span>
+                        <span className="home-leaderboard-metric-value">
+                          {trader.totalTrades.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 border-t border-white/6 pt-4 flex items-center justify-between gap-4">
+                      <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">
+                        Open wallet analytics
+                      </p>
+                      <span className="text-sm text-zinc-300">Inspect address</span>
+                    </div>
+                  </Link>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+          ) : (
+            <div className="glass-empty-state rounded-[1.35rem] p-8 text-sm">
+              Ranked wallets will appear here as soon as indexed Delphi activity is available.
+            </div>
+          )}
         </section>
       </ScrollReveal>
     </div>

@@ -20,8 +20,8 @@
   --accent-purple: #7c3aed;
   --accent-cyan: #67e8f9;
   --accent-gold: #f6c978;
-  --glass-bg: rgba(10, 14, 22, 0.6);
-  --glass-bg-hover: rgba(18, 24, 38, 0.74);
+  --glass-bg: rgba(10, 14, 22, 0.42);
+  --glass-bg-hover: rgba(18, 24, 38, 0.58);
   --glass-blur: 26px;
   --glass-border: rgba(255, 255, 255, 0.095);
   --glass-border-top: rgba(255, 255, 255, 0.2);
@@ -281,12 +281,26 @@ body::after {
   mask-image: radial-gradient(circle at center, black 28%, transparent 82%);
 }
 
+.app-background-spiral {
+  position: absolute;
+  inset: 0;
+  opacity: 0.78;
+  mix-blend-mode: screen;
+  transform: scale(1.12);
+  mask-image:
+    radial-gradient(circle at center, black 0%, black 62%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, black 8%, black 94%, transparent 100%);
+  -webkit-mask-image:
+    radial-gradient(circle at center, black 0%, black 62%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, black 8%, black 94%, transparent 100%);
+}
+
 .app-background-vignette {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, transparent 38%, rgba(9, 9, 13, 0.18) 68%, rgba(9, 9, 13, 0.75) 100%),
-    linear-gradient(180deg, rgba(9, 9, 13, 0.12), rgba(9, 9, 13, 0.52));
+    radial-gradient(circle at center, transparent 34%, rgba(9, 9, 13, 0.14) 66%, rgba(9, 9, 13, 0.64) 100%),
+    linear-gradient(180deg, rgba(9, 9, 13, 0.08), rgba(9, 9, 13, 0.36));
 }
 
 @keyframes aurora-drift {
@@ -484,10 +498,10 @@ header a:first-of-type:hover img {
   border-radius: 1.75rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(135deg, rgba(18, 18, 28, 0.82), rgba(17, 24, 39, 0.68)),
-    rgba(18, 18, 28, 0.72);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+    linear-gradient(135deg, rgba(18, 18, 28, 0.48), rgba(17, 24, 39, 0.28)),
+    rgba(18, 18, 28, 0.28);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 18px 60px rgba(0, 0, 0, 0.25);
@@ -597,7 +611,7 @@ header a:first-of-type:hover img {
   padding: 1rem 1.1rem;
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .page-stat-card::after {
@@ -639,10 +653,10 @@ header a:first-of-type:hover img {
   border-radius: 1.4rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015)),
-    linear-gradient(180deg, rgba(9, 12, 20, 0.78), rgba(9, 12, 20, 0.54));
-  backdrop-filter: blur(18px) saturate(1.5);
-  -webkit-backdrop-filter: blur(18px) saturate(1.5);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012)),
+    linear-gradient(180deg, rgba(9, 12, 20, 0.48), rgba(9, 12, 20, 0.2));
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 18px 60px rgba(2, 6, 23, 0.2);
@@ -810,8 +824,8 @@ header a:first-of-type:hover img {
   border-radius: 1.5rem;
   border: 1px solid rgba(255, 255, 255, 0.07);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
-    rgba(7, 10, 17, 0.58);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.012)),
+    rgba(7, 10, 17, 0.24);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 18px 46px rgba(2, 6, 23, 0.18);
@@ -824,7 +838,7 @@ header a:first-of-type:hover img {
   padding: 0.6rem 0.85rem;
   border-radius: 9999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.03);
   color: #d4d4d8;
   font-size: 0.78rem;
   font-weight: 600;
@@ -853,7 +867,7 @@ header a:first-of-type:hover img {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
-    rgba(12, 16, 26, 0.7);
+    rgba(12, 16, 26, 0.52);
 }
 
 .glass-kpi-band-card::after {
@@ -871,7 +885,7 @@ header a:first-of-type:hover img {
   border: 1px dashed rgba(255, 255, 255, 0.1);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.01)),
-    rgba(6, 9, 15, 0.44);
+    rgba(6, 9, 15, 0.32);
   color: #71717a;
 }
 
@@ -1272,7 +1286,7 @@ header a:first-of-type:hover img {
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.016) 24%, transparent 56%),
-    linear-gradient(145deg, rgba(10, 14, 22, 0.92), rgba(9, 13, 22, 0.74));
+    linear-gradient(145deg, rgba(10, 14, 22, 0.74), rgba(9, 13, 22, 0.52));
   backdrop-filter: blur(28px) saturate(1.8);
   -webkit-backdrop-filter: blur(28px) saturate(1.8);
   box-shadow:
@@ -1468,8 +1482,8 @@ header a:first-of-type:hover img {
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.016)),
-    rgba(255, 255, 255, 0.03);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.072), rgba(255, 255, 255, 0.014)),
+    rgba(255, 255, 255, 0.018);
   backdrop-filter: blur(16px) saturate(1.45);
   -webkit-backdrop-filter: blur(16px) saturate(1.45);
   box-shadow:
@@ -1557,7 +1571,7 @@ header a:first-of-type:hover img {
   overflow: hidden;
   border-radius: 1.2rem;
   border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.035);
+  background: rgba(255, 255, 255, 0.024);
 }
 
 .home-proof-card {
@@ -1648,8 +1662,8 @@ header a:first-of-type:hover img {
   border-radius: 2rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.015) 24%, transparent 60%),
-    linear-gradient(180deg, rgba(10, 14, 22, 0.84), rgba(7, 10, 16, 0.68));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.012) 24%, transparent 60%),
+    linear-gradient(180deg, rgba(10, 14, 22, 0.54), rgba(7, 10, 16, 0.3));
   backdrop-filter: blur(24px) saturate(1.75);
   -webkit-backdrop-filter: blur(24px) saturate(1.75);
   box-shadow:
@@ -1708,8 +1722,8 @@ header a:first-of-type:hover img {
   border-radius: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)),
-    rgba(8, 12, 20, 0.74);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.018)),
+    rgba(8, 12, 20, 0.52);
   backdrop-filter: blur(18px) saturate(1.55);
   -webkit-backdrop-filter: blur(18px) saturate(1.55);
   box-shadow:
@@ -1737,8 +1751,8 @@ header a:first-of-type:hover img {
   border-radius: 1.6rem;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015) 24%, transparent 60%),
-    linear-gradient(135deg, rgba(10, 15, 24, 0.9), rgba(9, 13, 22, 0.76));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012) 24%, transparent 60%),
+    linear-gradient(135deg, rgba(10, 15, 24, 0.52), rgba(9, 13, 22, 0.34));
   backdrop-filter: blur(24px) saturate(1.75);
   -webkit-backdrop-filter: blur(24px) saturate(1.75);
   box-shadow:
@@ -1840,7 +1854,7 @@ header a:first-of-type:hover img {
   border: 1px solid rgba(255, 255, 255, 0.06);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.085), rgba(255, 255, 255, 0.018)),
-    rgba(255, 255, 255, 0.03);
+    rgba(255, 255, 255, 0.022);
   backdrop-filter: blur(16px) saturate(1.45);
   -webkit-backdrop-filter: blur(16px) saturate(1.45);
   box-shadow:
@@ -1920,6 +1934,74 @@ header a:first-of-type:hover img {
     radial-gradient(circle at top right, rgba(246, 201, 120, 0.08), transparent 36%),
     radial-gradient(circle at bottom left, rgba(103, 232, 249, 0.07), transparent 34%);
   pointer-events: none;
+}
+
+.home-leaderboard-card {
+  min-height: 100%;
+}
+
+.home-leaderboard-card::after {
+  content: '';
+  position: absolute;
+  inset: auto auto -40% -10%;
+  width: 10rem;
+  height: 10rem;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(196, 181, 253, 0.12), transparent 72%);
+  pointer-events: none;
+}
+
+.home-leaderboard-rank-1 {
+  border-color: rgba(246, 201, 120, 0.2) !important;
+}
+
+.home-leaderboard-rank-2 {
+  border-color: rgba(226, 232, 240, 0.16) !important;
+}
+
+.home-leaderboard-rank-3 {
+  border-color: rgba(251, 146, 60, 0.18) !important;
+}
+
+.home-leaderboard-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: #f3f4f6;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.home-leaderboard-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.home-leaderboard-metric-label {
+  color: #71717a;
+  font-size: 0.67rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-leaderboard-metric-value {
+  color: #f5f7fb;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .market-mini-chip-success {

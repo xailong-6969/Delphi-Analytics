@@ -11,7 +11,6 @@ import {
   LiquidGlassFilter,
   LiquidGlassSurface,
 } from "@/components/ui/liquid-glass";
-import { SpiralAnimation } from "@/components/ui/spiral-animation";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -187,14 +186,6 @@ export function CinematicFooter() {
         <div className="motion-footer-grid pointer-events-none absolute inset-0" />
         <div className="motion-footer-vignette pointer-events-none absolute inset-0" />
 
-        <div className="motion-footer-spiral pointer-events-none absolute inset-0 opacity-70">
-          <SpiralAnimation
-            particleColor="rgba(191,145,255,0.95)"
-            trailLength={58}
-            starCount={1700}
-          />
-        </div>
-
         <div
           ref={giantTextRef}
           className="motion-footer-giant pointer-events-none absolute inset-x-0 bottom-[-6vh] text-center select-none"
@@ -259,12 +250,6 @@ export function CinematicFooter() {
                 Tracking {DELPHI_PROXY.slice(0, 10)}...{DELPHI_PROXY.slice(-6)}
               </div>
             </LiquidGlassSurface>
-            <LiquidGlassSurface className="rounded-full px-4 py-2.5 text-sm text-zinc-200">
-              <div className="flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.65)]" />
-                Automatic live-market handoff enabled
-              </div>
-            </LiquidGlassSurface>
           </div>
         </div>
 
@@ -277,10 +262,15 @@ export function CinematicFooter() {
           </div>
 
           <LiquidGlassSurface className="rounded-full px-5 py-3">
-            <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300">
+            <a
+              href="https://github.com/xailong-6969"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-zinc-300"
+            >
               <span>Built by</span>
               <span className="text-white">xailong_6969</span>
-            </div>
+            </a>
           </LiquidGlassSurface>
 
           <button
