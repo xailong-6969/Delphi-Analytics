@@ -237,7 +237,7 @@ body::after {
   position: absolute;
   border-radius: 9999px;
   filter: blur(100px);
-  opacity: 0.24;
+  opacity: 0.14;
   mix-blend-mode: screen;
   animation: aurora-drift 18s ease-in-out infinite alternate;
 }
@@ -275,32 +275,31 @@ body::after {
     linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 72px 72px;
-  opacity: 0.16;
+  opacity: 0.08;
   transform: perspective(1200px) rotateX(72deg) scale(1.4);
   transform-origin: top center;
   mask-image: radial-gradient(circle at center, black 28%, transparent 82%);
 }
 
-.app-background-spiral {
+.app-background-shader {
   position: absolute;
   inset: 0;
-  opacity: 0.78;
-  mix-blend-mode: screen;
-  transform: scale(1.12);
+  opacity: 0.92;
   mask-image:
-    radial-gradient(circle at center, black 0%, black 62%, transparent 100%),
-    linear-gradient(180deg, transparent 0%, black 8%, black 94%, transparent 100%);
+    radial-gradient(circle at center, black 0%, black 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, black 7%, black 96%, transparent 100%);
   -webkit-mask-image:
-    radial-gradient(circle at center, black 0%, black 62%, transparent 100%),
-    linear-gradient(180deg, transparent 0%, black 8%, black 94%, transparent 100%);
+    radial-gradient(circle at center, black 0%, black 84%, transparent 100%),
+    linear-gradient(180deg, transparent 0%, black 7%, black 96%, transparent 100%);
+  filter: saturate(0.96) brightness(0.92);
 }
 
 .app-background-vignette {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, transparent 34%, rgba(9, 9, 13, 0.14) 66%, rgba(9, 9, 13, 0.64) 100%),
-    linear-gradient(180deg, rgba(9, 9, 13, 0.08), rgba(9, 9, 13, 0.36));
+    radial-gradient(circle at center, transparent 38%, rgba(9, 9, 13, 0.1) 68%, rgba(9, 9, 13, 0.56) 100%),
+    linear-gradient(180deg, rgba(9, 9, 13, 0.05), rgba(9, 9, 13, 0.28));
 }
 
 @keyframes aurora-drift {

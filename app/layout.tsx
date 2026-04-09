@@ -4,7 +4,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PageTransitionProvider from "@/components/PageTransitionProvider";
 import LiveTicker from "@/components/LiveTicker";
-import { SpiralAnimation } from "@/components/ui/spiral-animation";
+import { ShaderAnimation } from "@/components/ui/shader-animation";
 
 export const metadata: Metadata = {
   title: "Delphi Analytics | Gensyn Testnet",
@@ -27,12 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="app-background-aurora app-background-aurora-cyan" />
           <div className="app-background-aurora app-background-aurora-emerald" />
           <div className="app-background-grid" />
-          <div className="app-background-spiral">
-            <SpiralAnimation
-              particleColor="rgba(198, 166, 255, 0.92)"
-              trailLength={28}
-              starCount={640}
-            />
+          <div className="app-background-shader">
+            <ShaderAnimation />
           </div>
           <div className="app-background-vignette" />
         </div>
