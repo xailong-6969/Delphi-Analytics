@@ -36,28 +36,45 @@ export function ShaderAnimation({ className }: ShaderAnimationProps) {
     `;
 
     const fragmentShader = `
-      #define TWO_PI 6.2831853072
-      #define PI 3.14159265359
-
       precision highp float;
       uniform vec2 resolution;
       uniform float time;
 
       void main(void) {
-        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
-        float t = time * 0.05;
-        float lineWidth = 0.002;
+        vec2 uv = gl_FragCoord.xy / resolution.xy;
+        vec2 p = uv * 2.0 - 1.0;
+        p.x *= resolution.x / resolution.y;
 
-        vec3 color = vec3(0.0);
-        for (int j = 0; j < 3; j++) {
-          for (int i = 0; i < 5; i++) {
-            color[j] += lineWidth * float(i * i) /
-              abs(fract(t - 0.01 * float(j) + float(i) * 0.01) * 5.0 - length(uv) + mod(uv.x + uv.y, 0.2));
-          }
+        float t = time * 0.28;
+        vec3 base = mix(
+          vec3(0.014, 0.02, 0.055),
+          vec3(0.07, 0.03, 0.14),
+          uv.x * 0.52 + uv.y * 0.28
+        );
+
+        vec3 ribbons = vec3(0.0);
+
+        for (int i = 0; i < 6; i++) {
+          float fi = float(i);
+          float waveA = sin((p.x * 1.3 + p.y * (0.55 + fi * 0.06)) * 5.8 + t * (1.02 + fi * 0.09) + fi * 1.2);
+          float waveB = sin((p.x * -0.95 + p.y * (0.82 + fi * 0.05)) * 5.1 - t * (0.84 + fi * 0.06) + fi * 1.7);
+          float drift = sin(t * 0.42 + p.x * 1.15 - p.y * 0.9 + fi) * 0.05;
+          float curve = waveA * 0.18 + waveB * 0.14 + drift + p.y * 0.22 - (fi - 2.5) * 0.07;
+          float ribbon = smoothstep(0.18, 0.0, abs(curve));
+
+          vec3 tint = mix(
+            vec3(0.18, 0.32, 0.95),
+            vec3(0.96, 0.36, 0.62),
+            fract(fi * 0.31 + uv.y * 0.26)
+          );
+
+          ribbons += tint * ribbon * (0.12 + fi * 0.04);
         }
 
-        vec3 tuned = vec3(color.r * 0.45, color.g * 0.36, color.b * 0.88);
-        gl_FragColor = vec4(tuned, 1.0);
+        float vignette = smoothstep(1.5, 0.28, length(p * vec2(0.92, 0.84)));
+        vec3 color = base + ribbons * vignette;
+
+        gl_FragColor = vec4(color, 1.0);
       }
     `;
 
@@ -81,11 +98,20 @@ export function ShaderAnimation({ className }: ShaderAnimationProps) {
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: false,
-      alpha: true,
-      powerPreference: "high-performance",
-    });
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: false,
+        alpha: true,
+        powerPreference: "high-performance",
+        failIfMajorPerformanceCaveat: true,
+      });
+    } catch (error) {
+      console.warn("Falling back to static shader background:", error);
+      geometry.dispose();
+      material.dispose();
+      return;
+    }
 
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
@@ -105,13 +131,13 @@ export function ShaderAnimation({ className }: ShaderAnimationProps) {
     onWindowResize();
     window.addEventListener("resize", onWindowResize, false);
 
-    const animate = () => {
-      const animationId = window.requestAnimationFrame(animate);
+      const animate = () => {
+        const animationId = window.requestAnimationFrame(animate);
 
-      if (!document.hidden) {
-        uniforms.time.value += reduceMotion ? 0.005 : 0.02;
-        renderer.render(scene, camera);
-      }
+        if (!document.hidden) {
+          uniforms.time.value += reduceMotion ? 0.006 : 0.026;
+          renderer.render(scene, camera);
+        }
 
       if (sceneRef.current) {
         sceneRef.current.animationId = animationId;
@@ -152,7 +178,10 @@ export function ShaderAnimation({ className }: ShaderAnimationProps) {
     <div
       ref={containerRef}
       className={cn("h-full w-full overflow-hidden", className)}
-      style={{ background: "#000" }}
+      style={{
+        background:
+          "radial-gradient(circle at 24% 30%, rgba(96, 165, 250, 0.12), transparent 30%), radial-gradient(circle at 74% 22%, rgba(168, 85, 247, 0.14), transparent 32%), linear-gradient(135deg, rgba(8, 12, 22, 0.98), rgba(18, 8, 42, 0.96) 52%, rgba(4, 10, 18, 0.98))",
+      }}
     />
   );
 }

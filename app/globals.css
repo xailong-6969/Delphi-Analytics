@@ -270,36 +270,34 @@ body::after {
 
 .app-background-grid {
   position: absolute;
-  inset: -12% -6%;
+  inset: -18% -12%;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
   background-size: 72px 72px;
-  opacity: 0.08;
+  opacity: 0.05;
   transform: perspective(1200px) rotateX(72deg) scale(1.4);
   transform-origin: top center;
-  mask-image: radial-gradient(circle at center, black 28%, transparent 82%);
+  mask-image: radial-gradient(circle at center, black 56%, transparent 100%);
+  -webkit-mask-image: radial-gradient(circle at center, black 56%, transparent 100%);
 }
 
 .app-background-shader {
   position: absolute;
-  inset: 0;
-  opacity: 0.92;
-  mask-image:
-    radial-gradient(circle at center, black 0%, black 84%, transparent 100%),
-    linear-gradient(180deg, transparent 0%, black 7%, black 96%, transparent 100%);
-  -webkit-mask-image:
-    radial-gradient(circle at center, black 0%, black 84%, transparent 100%),
-    linear-gradient(180deg, transparent 0%, black 7%, black 96%, transparent 100%);
-  filter: saturate(0.96) brightness(0.92);
+  inset: -6%;
+  opacity: 0.84;
+  mask-image: linear-gradient(180deg, transparent 0%, black 4%, black 96%, transparent 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 4%, black 96%, transparent 100%);
+  filter: saturate(0.88) brightness(0.88) blur(2px);
+  transform: scale(1.04);
 }
 
 .app-background-vignette {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at center, transparent 38%, rgba(9, 9, 13, 0.1) 68%, rgba(9, 9, 13, 0.56) 100%),
-    linear-gradient(180deg, rgba(9, 9, 13, 0.05), rgba(9, 9, 13, 0.28));
+    radial-gradient(circle at center, transparent 52%, rgba(9, 9, 13, 0.08) 78%, rgba(9, 9, 13, 0.42) 100%),
+    linear-gradient(180deg, rgba(9, 9, 13, 0.04), rgba(9, 9, 13, 0.18));
 }
 
 @keyframes aurora-drift {
@@ -470,7 +468,6 @@ header a:first-of-type:hover img {
 .page-transition-frame {
   min-height: 100%;
   transform-origin: top center;
-  will-change: transform, opacity, filter;
   transform-style: preserve-3d;
 }
 
@@ -2594,7 +2591,6 @@ header a:first-of-type:hover img {
   font-size: 0.9rem;
   cursor: pointer;
   overflow: hidden;
-  will-change: transform;
 }
 
 .mag-btn-content {
