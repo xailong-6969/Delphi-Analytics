@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const markets = await getLiveMarkets(prisma);
 
-    const active = markets.filter((market) => market.status === "active");
-    const settled = markets.filter((market) => market.status === "settled");
+    const active = markets.filter((market) => market.isCurrentActive);
+    const settled = markets.filter((market) => !market.isCurrentActive);
 
     let result = markets;
     if (status === "active") {

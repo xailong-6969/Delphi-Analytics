@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-import { isNumericMarketId } from "@/lib/live-markets";
+import { getLiveMarketById, isNumericMarketId } from "@/lib/live-markets";
 import { normalizeMarketId } from "@/lib/markets-config";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ export async function GET(
     }
 
     const marketId = BigInt(marketIdStr);
+    const marketSummary = await getLiveMarketById(prisma, marketIdStr);
 
     const [market, recentTrades, priceHistory] = await Promise.all([
       prisma.market.findUnique({
@@ -55,7 +56,7 @@ export async function GET(
       }),
     ]);
 
-    if (!market) {
+    if (!market || !marketSummary) {
       return NextResponse.json({ error: "Market not found" }, { status: 404 });
     }
 
@@ -86,20 +87,24 @@ export async function GET(
 
     return NextResponse.json({
       market: {
-        marketId: market.marketId.toString(),
-        title: market.title,
-        description: market.description,
-        category: market.category,
-        configUri: market.configUri,
-        status: market.status,
-        statusLabel: market.status === 0 ? "Active" : market.status === 2 ? "Settled" : "Unknown",
-        winningModelIdx: market.winningModelIdx?.toString(),
-        createdAt: market.createdAtTime,
-        endTime: market.endTime,
-        settledAt: market.settledAt,
-        totalTrades: market._count.trades,
-        totalVolume: market.totalVolume,
-        modelsJson: market.modelsJson,
+        marketId: marketSummary.internalId,
+        title: marketSummary.title,
+        description: marketSummary.description,
+        category: marketSummary.category,
+        configUri: marketSummary.configUri,
+        status: marketSummary.status === "settled" ? 2 : 0,
+        statusLabel: marketSummary.status === "settled" ? "Settled" : "Active",
+        winningModelIdx: marketSummary.winnerIdx?.toString(),
+        createdAt: marketSummary.createdAt,
+        endTime: marketSummary.endTime,
+        settledAt: marketSummary.settledAt,
+        totalTrades: marketSummary.totalTrades || market._count.trades,
+        totalVolume: marketSummary.totalVolume,
+        modelsJson: marketSummary.models.map((model) => ({
+          idx: model.idx,
+          familyName: model.family,
+          modelName: model.name,
+        })),
       },
       latestPrices: latestPrices.map((p) => ({
         modelIdx: p.modelIdx.toString(),

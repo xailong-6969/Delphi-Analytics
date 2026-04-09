@@ -102,7 +102,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     title: "Will Timothee Chalamet Win Best Actor At The Oscars On Sunday, March 15th?",
     status: "settled",
     type: "outcome",
-    winnerIdx: 1,  // YES won
+    winnerIdx: 0,  // NO won
     endDate: "Mar 16",
     endTimestamp: "2026-03-16T08:41:00Z",
     models: [
@@ -195,7 +195,7 @@ export const MARKET_WINNERS: Record<string, number> = {
   "3": 1,  // Qwen/Qwen3-8B won
   "4": 3,  // grok-4.1-fast-reasoning won
   "5": 0,  // NO won (Trump/Anthropic ban market)
-  "6": 1,  // YES won (Chalamet Best Actor)
+  "6": 0,  // NO won (Chalamet Best Actor)
   "7": 1,  // YES won (March Madness #1 seeds survived)
   "8": 0,  // NO won (Bitcoin not above $75K)
   "9": 0,  // NO won (Brent not above $110)

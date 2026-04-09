@@ -27,6 +27,7 @@ export interface LiveMarketSummary {
   endTime: Date | null;
   settledAt: Date | null;
   dateLabel: string | null;
+  isCurrentActive: boolean;
 }
 
 type DbMarketRecord = {
@@ -52,7 +53,7 @@ function normalizeModels(modelsJson: unknown, fallback?: MarketConfig): LiveMark
   const parsedModels = parseModelsJson(modelsJson).map((model) => ({
     idx: model.idx,
     name: model.modelName || model.fullName || `Model ${model.idx}`,
-    family: model.familyName || model.familyName || "",
+    family: model.familyName || "",
   }));
 
   if (parsedModels.length > 0) {
@@ -81,6 +82,40 @@ function inferMarketType(models: LiveMarketModel[], fallback?: MarketConfig): "m
   }
 
   return "model";
+}
+
+function isGenericTitle(title: string, internalId: string) {
+  return title.trim().toUpperCase() === `MARKET #${internalId}`;
+}
+
+function hasRenderableMarketData(summary: Pick<
+  LiveMarketSummary,
+  "internalId" | "title" | "models" | "configUri" | "totalTrades" | "totalVolume"
+>) {
+  if (summary.models.length > 0) return true;
+  if (summary.configUri) return true;
+  if (summary.totalTrades > 0) return true;
+  if (summary.totalVolume !== "0") return true;
+  return !isGenericTitle(summary.title, summary.internalId);
+}
+
+function isCurrentActiveMarket(summary: Pick<
+  LiveMarketSummary,
+  "status" | "endTime" | "internalId" | "title" | "models" | "configUri" | "totalTrades" | "totalVolume"
+>) {
+  if (summary.status !== "active") {
+    return false;
+  }
+
+  if (!hasRenderableMarketData(summary)) {
+    return false;
+  }
+
+  if (summary.endTime && summary.endTime.getTime() <= Date.now()) {
+    return false;
+  }
+
+  return true;
 }
 
 function formatDateLabel(
@@ -136,31 +171,44 @@ function toFallbackSummary(internalId: string, fallback: MarketConfig): LiveMark
     endTime,
     settledAt: fallback.status === "settled" ? endTime : null,
     dateLabel: fallback.endDate,
+    isCurrentActive:
+      fallback.status === "active" && (!endTime || endTime.getTime() > Date.now()),
   };
 }
 
 function toLiveMarketSummary(record: DbMarketRecord): LiveMarketSummary {
   const internalId = record.marketId.toString();
   const fallback = MARKETS[internalId];
-  const models = normalizeModels(record.modelsJson, fallback);
-  const status = record.status === 2 || record.settledAt ? "settled" : "active";
+  const preferConfiguredSettlement = fallback?.status === "settled";
+  const models = preferConfiguredSettlement
+    ? fallback.models.map((model) => ({
+        idx: model.idx,
+        name: model.name,
+        family: model.family,
+      }))
+    : normalizeModels(record.modelsJson, fallback);
+  const status = preferConfiguredSettlement || record.status === 2 || record.settledAt ? "settled" : "active";
   const winnerIdx =
-    record.winningModelIdx !== null
+    preferConfiguredSettlement && fallback?.winnerIdx !== undefined
+      ? fallback.winnerIdx
+      : record.winningModelIdx !== null
       ? Number(record.winningModelIdx)
       : fallback?.winnerIdx;
   const winnerName =
     winnerIdx !== undefined ? models.find((model) => model.idx === winnerIdx)?.name : undefined;
   const totalTrades = record._count?.trades ?? record.totalTrades ?? 0;
+  const title = record.title || fallback?.title || `Market #${internalId}`;
+  const endTime = record.endTime || (fallback?.endTimestamp ? new Date(fallback.endTimestamp) : null);
 
   const summary: LiveMarketSummary = {
     internalId,
     displayId: fallback?.displayId || internalId,
-    title: record.title || fallback?.title || `Market #${internalId}`,
+    title,
     description: record.description || null,
     category: record.category || null,
     configUri: record.configUri || null,
     status,
-    statusCode: record.status,
+    statusCode: preferConfiguredSettlement ? 2 : record.status,
     type: inferMarketType(models, fallback),
     winnerIdx,
     winnerName,
@@ -168,11 +216,13 @@ function toLiveMarketSummary(record: DbMarketRecord): LiveMarketSummary {
     totalTrades,
     totalVolume: record.totalVolume || "0",
     createdAt: record.createdAtTime || null,
-    endTime: record.endTime || (fallback?.endTimestamp ? new Date(fallback.endTimestamp) : null),
-    settledAt: record.settledAt || null,
+    endTime,
+    settledAt: record.settledAt || (preferConfiguredSettlement ? endTime : null),
     dateLabel: null,
+    isCurrentActive: false,
   };
 
+  summary.isCurrentActive = isCurrentActiveMarket(summary);
   summary.dateLabel = formatDateLabel(summary, fallback);
   return summary;
 }
@@ -196,8 +246,12 @@ export async function getLiveMarkets(prisma: PrismaClient): Promise<LiveMarketSu
     }
   }
 
-  summaries.sort((left, right) => Number(right.internalId) - Number(left.internalId));
-  return summaries;
+  const visibleSummaries = summaries.filter(
+    (market) => MARKETS[market.internalId] || hasRenderableMarketData(market)
+  );
+
+  visibleSummaries.sort((left, right) => Number(right.internalId) - Number(left.internalId));
+  return visibleSummaries;
 }
 
 export async function getLiveMarketById(
@@ -216,7 +270,8 @@ export async function getLiveMarketById(
   });
 
   if (market) {
-    return toLiveMarketSummary(market);
+    const summary = toLiveMarketSummary(market);
+    return MARKETS[summary.internalId] || hasRenderableMarketData(summary) ? summary : null;
   }
 
   const fallback = MARKETS[internalId];
@@ -236,7 +291,7 @@ export async function getSettledWinnerMap(prisma: PrismaClient) {
     },
   });
 
-  return Object.fromEntries(
+  const winnerMap = Object.fromEntries(
     markets.map((market) => [
       market.marketId.toString(),
       {
@@ -245,4 +300,19 @@ export async function getSettledWinnerMap(prisma: PrismaClient) {
       },
     ])
   ) as Record<string, { winnerIdx: number; settledAt: Date | null }>;
+
+  for (const [marketId, config] of Object.entries(MARKETS)) {
+    if (config.status !== "settled" || config.winnerIdx === undefined) {
+      continue;
+    }
+
+    winnerMap[marketId] = {
+      winnerIdx: config.winnerIdx,
+      settledAt:
+        winnerMap[marketId]?.settledAt ||
+        (config.endTimestamp ? new Date(config.endTimestamp) : null),
+    };
+  }
+
+  return winnerMap;
 }

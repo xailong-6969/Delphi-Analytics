@@ -5,7 +5,7 @@
 // - Called by CRON, not by page loads
 
 import { PrismaClient } from "@prisma/client";
-import { VALID_MARKET_IDS } from "@/lib/markets-config";
+import { MARKETS, VALID_MARKET_IDS } from "@/lib/markets-config";
 
 const DELPHI_API_BASE = "https://delphi.gensyn.ai/api";
 
@@ -31,6 +31,10 @@ export interface CachedMarketData {
   winningModelIdx?: number;
   winningModelName?: string;
   cachedAt: Date;
+}
+
+function normalizeWinnerLabel(value: string) {
+  return value.trim().toUpperCase().replace(/\s+/g, " ");
 }
 
 // ============================================
@@ -323,8 +327,20 @@ export async function discoverAndCacheModels(
         title = settled.name;
       }
 
-      // Update database
-      const winnerIdx = settled?.winnerIdx ?? cachedData?.winningModelIdx ?? null;
+      // Resolve winner against the discovered model names instead of trusting a possibly shifted raw idx.
+      const resolvedWinnerIdx =
+        settled?.winnerName
+          ? models.find(
+              (model) => normalizeWinnerLabel(model.name) === normalizeWinnerLabel(settled.winnerName)
+            )?.idx
+          : undefined;
+      const configuredWinnerIdx = MARKETS[marketId]?.status === "settled" ? MARKETS[marketId].winnerIdx : undefined;
+      const winnerIdx =
+        resolvedWinnerIdx ??
+        configuredWinnerIdx ??
+        settled?.winnerIdx ??
+        cachedData?.winningModelIdx ??
+        null;
 
       await prisma.market.upsert({
         where: { marketId: BigInt(marketId) },

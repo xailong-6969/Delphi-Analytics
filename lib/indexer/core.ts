@@ -1,5 +1,6 @@
 import { createPublicClient, http, parseAbiItem, getAddress, type Log } from "viem";
 import { PrismaClient } from "@prisma/client";
+import { getSettledWinnerMap } from "@/lib/live-markets";
 
 // ============================================
 // CONFIGURATION
@@ -341,18 +342,9 @@ export async function runIndexer(
 
 export async function recalculateTraderStats(prisma: PrismaClient): Promise<number> {
   const traders = await prisma.trade.findMany({ distinct: ['trader'], select: { trader: true } });
-  const settledMarkets = await prisma.market.findMany({
-    where: {
-      status: 2,
-      winningModelIdx: { not: null },
-    },
-    select: {
-      marketId: true,
-      winningModelIdx: true,
-    },
-  });
+  const settledWinnerMap = await getSettledWinnerMap(prisma);
   const winnerByMarketId = new Map(
-    settledMarkets.map((market) => [market.marketId.toString(), Number(market.winningModelIdx)])
+    Object.entries(settledWinnerMap).map(([marketId, meta]) => [marketId, meta.winnerIdx])
   );
   let updated = 0;
 

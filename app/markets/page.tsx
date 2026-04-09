@@ -17,8 +17,8 @@ function formatVolume(vol: string): string {
 
 export default async function MarketsPage() {
   const markets = await getLiveMarkets(prisma);
-  const activeMarkets = markets.filter((market) => market.status === "active");
-  const settledMarkets = markets.filter((market) => market.status === "settled");
+  const activeMarkets = markets.filter((market) => market.isCurrentActive);
+  const settledMarkets = markets.filter((market) => !market.isCurrentActive);
   const totalMarkets = markets.length;
   const featuredHref = activeMarkets[0]
     ? `/markets/${activeMarkets[0].internalId}`
@@ -57,7 +57,7 @@ export default async function MarketsPage() {
           <div className="page-stat-card">
             <div className="page-stat-label">Settled Archive</div>
             <div className="page-stat-value text-blue-400">{settledMarkets.length}</div>
-            <div className="page-stat-caption">Resolved markets with winners</div>
+            <div className="page-stat-caption">Closed and resolved Delphi markets</div>
           </div>
           <div className="page-stat-card">
             <div className="page-stat-label">Network</div>
@@ -91,8 +91,8 @@ export default async function MarketsPage() {
           <section className="section-panel">
             <div className="section-panel-header">
               <div className="section-panel-copy">
-                <h2 className="text-xl font-semibold text-white">Settled Markets</h2>
-                <p>Resolved benchmark rounds and outcome markets with their final winner.</p>
+                <h2 className="text-xl font-semibold text-white">Market Archive</h2>
+                <p>Closed Delphi markets, including resolved rounds and recent archived activity.</p>
               </div>
               <span className="badge-settled rounded-full px-2 py-0.5 text-xs font-medium">
                 {settledMarkets.length}
@@ -110,15 +110,10 @@ export default async function MarketsPage() {
   );
 }
 
-function MarketCard({
-  market,
-  isSettled = false,
-}: {
-  market: LiveMarketSummary;
-  isSettled?: boolean;
-}) {
+function MarketCard({ market, isSettled = false }: { market: LiveMarketSummary; isSettled?: boolean }) {
   const entryLabel = market.type === "outcome" ? "Outcomes" : "Models";
   const winnerLabel = market.type === "outcome" ? "Winning Outcome" : "Winner";
+  const badgeLabel = isSettled ? (market.winnerName ? "Settled" : "Archive") : "Active";
 
   return (
     <Link href={`/markets/${market.internalId}`} className="card glass-hover block p-5 card-hover">
@@ -132,7 +127,7 @@ function MarketCard({
             isSettled ? "badge-settled" : "badge-active"
           }`}
         >
-          {isSettled ? "Settled" : "Active"}
+          {badgeLabel}
         </span>
       </div>
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { getAddress } from "viem";
+import { getSettledWinnerMap } from "@/lib/live-markets";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -22,6 +23,7 @@ export async function GET(
 
   try {
     const address = getAddress(rawAddress);
+    const settledWinnerMap = await getSettledWinnerMap(prisma);
 
     // Get all trades for P&L calculation
     const trades = await prisma.trade.findMany({
@@ -71,7 +73,10 @@ export async function GET(
           tradeCount: 0,
           marketTitle: trade.market?.title || null,
           marketStatus: trade.market?.status ?? null,
-          winningModelIdx: trade.market?.winningModelIdx ?? null,
+          winningModelIdx:
+            settledWinnerMap[trade.marketId.toString()]?.winnerIdx !== undefined
+              ? BigInt(settledWinnerMap[trade.marketId.toString()].winnerIdx)
+              : trade.market?.winningModelIdx ?? null,
         };
         positions.set(key, pos);
       }

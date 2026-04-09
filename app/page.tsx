@@ -38,7 +38,7 @@ interface MarketsResponse {
 }
 
 function formatMarketChipDate(market: LiveMarketSummary): string {
-  return market.dateLabel || (market.status === "active" ? "Live market" : "Resolved");
+  return market.dateLabel || (market.isCurrentActive ? "Live market" : "Resolved");
 }
 
 function renderFeatureIcon(kind: "pulse" | "wallet" | "archive" | "chain") {
@@ -141,7 +141,7 @@ export default function HomePage() {
   const sortedMarkets = [...liveMarkets].sort(
     (left, right) => Number(right.internalId) - Number(left.internalId)
   );
-  const featuredMarket = liveMarkets.find((market) => market.status === "active") || null;
+  const featuredMarket = liveMarkets.find((market) => market.isCurrentActive) || null;
   const marketDisplayMap = new Map(
     liveMarkets.map((market) => [market.internalId, market.displayId])
   );
@@ -603,12 +603,12 @@ export default function HomePage() {
                     </div>
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
-                        market.status === "active"
+                        market.isCurrentActive
                           ? "badge-active"
                           : "badge-settled"
                       }`}
                     >
-                      {market.status === "active" ? "Live" : "Settled"}
+                      {market.isCurrentActive ? "Live" : "Settled"}
                     </span>
                   </div>
 

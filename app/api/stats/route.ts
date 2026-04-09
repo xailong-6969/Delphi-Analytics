@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { getLiveMarkets } from "@/lib/live-markets";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -20,8 +21,7 @@ export async function GET() {
 
     // Optimized queries using database aggregations
     const [
-      activeCount,
-      settledCount,
+      liveMarkets,
       totalTradesCount,
       uniqueTradersCount,
       indexerState,
@@ -31,18 +31,7 @@ export async function GET() {
       // Calculate 24h volume using SUM directly in database
       volume24hRaw,
     ] = await Promise.all([
-      // Active markets count
-      prisma.market.count({
-        where: {
-          status: 0,
-        }
-      }),
-      // Settled markets count
-      prisma.market.count({
-        where: {
-          status: 2,
-        }
-      }),
+      getLiveMarkets(prisma),
       // Total trades count (fast)
       prisma.trade.count(),
       // Unique traders count using raw SQL for performance
@@ -101,9 +90,9 @@ export async function GET() {
 
     const stats = {
       totalTrades: totalTradesCount,
-      totalMarkets: activeCount + settledCount,
-      activeMarkets: activeCount,
-      settledMarkets: settledCount,
+      totalMarkets: liveMarkets.length,
+      activeMarkets: liveMarkets.filter((market) => market.isCurrentActive).length,
+      settledMarkets: liveMarkets.filter((market) => !market.isCurrentActive).length,
       uniqueTraders: Number(uniqueTradersCount[0]?.count || 0),
       totalVolume: totalVolume.toString(),
       totalVolumeFormatted: formatVolume(totalVolume),
